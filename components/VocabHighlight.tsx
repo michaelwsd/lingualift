@@ -19,8 +19,11 @@ export const VocabHighlight: React.FC<VocabHighlightProps> = ({ word, children }
   };
 
   return (
-    <span className="relative group inline-block cursor-help align-baseline">
-      {/* The Highlighted Text - Using text-decoration for a cleaner underline */}
+    <span 
+      className="relative group inline-block cursor-help align-baseline"
+      onClick={(e) => e.stopPropagation()} 
+    >
+      {/* The Highlighted Text - Purely visual underline, no anchor tag */}
       <span className="underline decoration-2 underline-offset-4 decoration-indigo-300 text-slate-900 transition-all duration-300 group-hover:decoration-indigo-600 group-hover:text-indigo-900 decoration-clone">
         {children}
       </span>
@@ -36,7 +39,7 @@ export const VocabHighlight: React.FC<VocabHighlightProps> = ({ word, children }
             <h4 className="font-bold text-lg capitalize text-indigo-200 font-serif">{word.word}</h4>
             <button 
               onClick={handleSpeak}
-              className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-indigo-200 hover:text-white shrink-0 pointer-events-auto"
+              className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-indigo-200 hover:text-white shrink-0 pointer-events-auto cursor-pointer"
               title="Pronounce"
               aria-label="Pronounce word"
             >

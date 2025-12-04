@@ -102,6 +102,7 @@ export const PassageViewer: React.FC<PassageViewerProps> = ({
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
          const target = e.target as HTMLElement;
+         // Don't close if clicking a clickable word
          if (!target.classList.contains('clickable-word')) {
            setActiveDef(prev => ({ ...prev, position: null }));
          }
@@ -114,26 +115,51 @@ export const PassageViewer: React.FC<PassageViewerProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleWordClick = async (word: string, e: React.MouseEvent) => {
-    const rect = (e.target as HTMLElement).getBoundingClientRect();
-    const x = rect.left + rect.width / 2;
-    const y = rect.top;
-
+  const fetchDefinition = async (text: string, x: number, y: number) => {
     setActiveDef({
-      word,
+      word: text,
       definition: null,
       isLoading: true,
       position: { x, y }
     });
 
-    const def = await getWordDefinition(word);
+    const def = await getWordDefinition(text);
     
     setActiveDef(prev => {
-        if (prev.word === word) {
+        if (prev.word === text) {
             return { ...prev, definition: def, isLoading: false };
         }
         return prev;
     });
+  };
+
+  const handleWordClick = async (word: string, e: React.MouseEvent) => {
+    // Prevent single-word click if the user is making a selection
+    const selection = window.getSelection();
+    if (selection && !selection.isCollapsed) return;
+
+    const rect = (e.target as HTMLElement).getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top;
+
+    await fetchDefinition(word, x, y);
+  };
+
+  const handleTextSelection = (e: React.MouseEvent) => {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) return;
+
+    const text = selection.toString().trim();
+    if (!text || text.length > 50) return; // Limit length to avoid defining entire paragraphs
+
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    
+    // Calculate position (centered above selection)
+    const x = rect.left + rect.width / 2;
+    const y = rect.top;
+
+    fetchDefinition(text, x, y);
   };
 
   const handlePrint = (mode: 'student' | 'teacher') => {
@@ -158,7 +184,7 @@ export const PassageViewer: React.FC<PassageViewerProps> = ({
 
   const ParagraphRenderer = ({ children }: { children: React.ReactNode }) => {
     return (
-      <p className="mb-6 leading-8">
+      <p className="mb-6 leading-8 text-lg">
         {React.Children.map(children, (child) => {
           if (typeof child === 'string') {
              const parts = child.split(/(\s+)/);
@@ -170,7 +196,7 @@ export const PassageViewer: React.FC<PassageViewerProps> = ({
                return (
                  <span 
                    key={i}
-                   className="clickable-word hover:bg-yellow-100 hover:text-yellow-900 cursor-pointer rounded transition-colors print:hover:bg-transparent print:hover:text-inherit print:cursor-text"
+                   className="clickable-word hover:bg-yellow-100 hover:text-yellow-900 cursor-pointer rounded transition-colors print:hover:bg-transparent print:hover:text-inherit print:cursor-text select-text"
                    onClick={(e) => handleWordClick(cleanWord, e)}
                  >
                    {part}
@@ -270,8 +296,12 @@ export const PassageViewer: React.FC<PassageViewerProps> = ({
                 </div>
              </header>
 
-             <article className="prose prose-slate prose-lg max-w-none font-serif text-slate-800 selection:bg-indigo-100 selection:text-indigo-900 print:text-black print:text-base">
+             <article 
+               className="prose prose-slate prose-lg max-w-none font-serif text-slate-800 selection:bg-indigo-100 selection:text-indigo-900 print:text-black print:text-base"
+               onMouseUp={handleTextSelection}
+             >
                <ReactMarkdown
+                 urlTransform={(url) => url}
                  components={{
                    a: ({ href, children }) => {
                      // Check if it's a vocab link
@@ -282,9 +312,11 @@ export const PassageViewer: React.FC<PassageViewerProps> = ({
                          // Renders span, not an anchor
                          return <VocabHighlight word={word}>{children}</VocabHighlight>;
                        }
+                       // Fallback to simple span if ID not found, do NOT render anchor
+                       return <span className="underline decoration-indigo-300 decoration-dotted cursor-help">{children}</span>;
                      }
                      // Fallback for actual links
-                     return <a href={href} className="text-indigo-600 underline print:text-black print:no-underline">{children}</a>;
+                     return <a href={href} target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline print:text-black print:no-underline">{children}</a>;
                    },
                    p: ParagraphRenderer
                  }}
