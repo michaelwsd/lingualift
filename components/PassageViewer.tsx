@@ -292,7 +292,7 @@ export const PassageViewer: React.FC<PassageViewerProps> = ({
                   {passage.title}
                 </h1>
                 <div className="text-slate-500 font-serif italic text-sm print:text-black">
-                  Generated for High School English (CEFR B2/C1)
+                  Generated for VCE English (Unit 1-4)
                 </div>
              </header>
 

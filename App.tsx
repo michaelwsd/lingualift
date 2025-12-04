@@ -42,7 +42,7 @@ export default function App() {
               <span className="block text-xl font-serif font-bold text-slate-900 leading-none">
                 LinguaLift
               </span>
-              <span className="text-xs text-slate-500 font-medium tracking-wider uppercase">Academic Assistant</span>
+              <span className="text-xs text-slate-500 font-medium tracking-wider uppercase">VCE Assistant</span>
             </div>
           </div>
         </div>
@@ -56,9 +56,9 @@ export default function App() {
           {!passage ? (
             <div className="flex flex-col items-center justify-center min-h-[60vh] animate-in fade-in zoom-in duration-500">
               <div className="text-center mb-10 max-w-2xl">
-                <h1 className="text-5xl font-serif font-bold text-slate-900 mb-6">Master English Contextually</h1>
+                <h1 className="text-5xl font-serif font-bold text-slate-900 mb-6">Master VCE English</h1>
                 <p className="text-stone-600 text-lg leading-relaxed font-light">
-                  Generate tailored academic reading passages. Enhance your lexicon with contextual definitions, reading comprehension, and interactive pronunciation guides.
+                  Generate tailored academic reading passages based on VCE Units 1-4. Enhance your lexicon with contextual definitions, reading comprehension, and interactive pronunciation guides.
                 </p>
               </div>
               <GeneratorForm onGenerate={handleGenerate} isGenerating={isGenerating} />

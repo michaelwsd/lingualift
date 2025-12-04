@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { THEMES, LITERATURE_TYPES } from '../constants';
 import { GenerationConfig, Theme, LiteratureType, Difficulty } from '../types';
@@ -45,7 +46,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({ onGenerate, isGene
             <div className="w-16 h-16 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-4 border border-white/20">
               <GraduationCap className="w-8 h-8 text-indigo-100" />
             </div>
-            <h2 className="text-3xl font-serif font-bold text-white mb-2">Curriculum Generator</h2>
+            <h2 className="text-3xl font-serif font-bold text-white mb-2">VCE Resource Generator</h2>
             <p className="text-indigo-200 font-light tracking-wide text-sm uppercase">Create personalized academic content</p>
           </div>
         </div>
@@ -88,7 +89,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({ onGenerate, isGene
                  type="text"
                  value={customTopic}
                  onChange={handleCustomInputChange}
-                 placeholder="Or type a specific topic (e.g., 'Quantum Physics', 'The Gold Rush')..."
+                 placeholder="Or type a specific topic (e.g., 'Macbeth', 'Climate Change')..."
                  className={`
                    w-full pl-10 pr-4 py-3 bg-white border rounded-lg outline-none font-serif text-slate-800 placeholder:text-stone-400 placeholder:italic transition-all
                    ${customTopic 
@@ -155,7 +156,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({ onGenerate, isGene
                   }`}
                 >
                   <Gauge className="w-4 h-4" />
-                  Easy (~200w)
+                  Easy (Unit 1/2)
                 </button>
                 <button
                   type="button"
@@ -167,13 +168,13 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({ onGenerate, isGene
                   }`}
                 >
                   <Gauge className="w-4 h-4" />
-                  Medium (~500w)
+                  Medium (Unit 3/4)
                 </button>
               </div>
               <p className="text-xs text-stone-500 italic px-1">
                 {difficulty === Difficulty.EASY 
-                  ? 'Simpler vocabulary and shorter sentences. Good for quick practice.' 
-                  : 'Standard academic length and complexity. Best for deep learning.'}
+                  ? 'VCE Unit 1/2 standard. Good for foundational skills and EAL.' 
+                  : 'VCE Unit 3/4 standard. Complex language and sophisticated ideas.'}
               </p>
             </div>
           </div>
