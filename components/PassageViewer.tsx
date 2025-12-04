@@ -367,9 +367,13 @@ export const PassageViewer: React.FC<PassageViewerProps> = ({
                     </summary>
                     <div className="mt-4 pl-4 border-l-2 border-indigo-100 animate-in slide-in-from-top-2 print:mt-0 print:border-l-0 print:pl-0 print:block">
                        <h3 className="hidden print:block text-sm font-bold text-black uppercase tracking-widest mb-2 mt-4">Sample Response</h3>
-                       <p className="text-slate-600 leading-relaxed font-serif whitespace-pre-wrap print:text-black">
-                         {passage.sampleResponse}
-                       </p>
+                       <div className="text-slate-600 leading-relaxed font-serif print:text-black">
+                         {passage.sampleResponse.split(/\n\s*\n/).map((para, i) => {
+                           const trimmed = para.trim();
+                           if (!trimmed) return null;
+                           return <p key={i} className="mb-4 last:mb-0">{trimmed}</p>;
+                         })}
+                       </div>
                     </div>
                   </details>
                 </div>

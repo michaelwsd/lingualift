@@ -38,7 +38,7 @@ const PASSAGE_SCHEMA: Schema = {
       }
     },
     writingPrompt: { type: Type.STRING, description: "A thought-provoking essay prompt related to the passage theme." },
-    sampleResponse: { type: Type.STRING, description: "A VCE-standard essay response (~250 words) structured with Introduction, TEEL body paragraphs, and Conclusion." }
+    sampleResponse: { type: Type.STRING, description: "A VCE-standard essay response (~250 words) structured with Introduction, TEEL body paragraphs, and Conclusion. Paragraphs must be separated by double newlines." }
   },
   required: ["title", "content", "vocabulary", "questions", "writingPrompt", "sampleResponse"]
 };
@@ -66,6 +66,7 @@ export const generatePassageContent = async (config: GenerationConfig): Promise<
        - Introduction
        - Body paragraphs following the TEEL structure (Topic sentence, Explanation, Evidence, Link)
        - Conclusion.
+       - CRITICAL: Use double line breaks (\\n\\n) to separate the Introduction, each Body Paragraph, and the Conclusion.
   `;
 
   try {
