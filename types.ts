@@ -43,6 +43,8 @@ export interface Passage {
   content: string; // Markdown supported
   vocabulary: VocabularyWord[];
   questions: Question[];
+  writingPrompt: string;
+  sampleResponse: string;
   theme: string;
   type: LiteratureType;
   createdAt: number;

@@ -36,9 +36,11 @@ const PASSAGE_SCHEMA: Schema = {
         },
         required: ["question", "answer", "explanation"]
       }
-    }
+    },
+    writingPrompt: { type: Type.STRING, description: "A thought-provoking essay prompt related to the passage theme." },
+    sampleResponse: { type: Type.STRING, description: "A well-structured sample response (approx 150 words) to the writing prompt." }
   },
-  required: ["title", "content", "vocabulary", "questions"]
+  required: ["title", "content", "vocabulary", "questions", "writingPrompt", "sampleResponse"]
 };
 
 export const generatePassageContent = async (config: GenerationConfig): Promise<Omit<Passage, 'id' | 'createdAt' | 'theme' | 'type'>> => {
@@ -60,6 +62,7 @@ export const generatePassageContent = async (config: GenerationConfig): Promise<
     3. Tone: Appropriate for the literature type.
     4. Vocabulary: Include a list of challenging vocabulary words. These words MUST be extracted EXACTLY as they appear in the text.
     5. Comprehension: Generate 5 reading comprehension questions that test the student's understanding of the text. Include the answer and an explanation.
+    6. Writing: Include a creative writing prompt and a high-quality sample response.
   `;
 
   try {
@@ -89,7 +92,9 @@ export const generatePassageContent = async (config: GenerationConfig): Promise<
       questions: data.questions?.map((q: any) => ({
         ...q,
         id: crypto.randomUUID()
-      })) || []
+      })) || [],
+      writingPrompt: data.writingPrompt || "Reflect on the passage.",
+      sampleResponse: data.sampleResponse || "Sample response not available."
     };
 
   } catch (error) {

@@ -3,7 +3,7 @@ import React, { useMemo, useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Passage, VocabularyWord, Question } from '../types';
 import { VocabCard } from './VocabCard';
-import { BookOpen, RefreshCw, X, Loader2, HelpCircle, ChevronDown, Download, CheckCircle2, Lightbulb } from 'lucide-react';
+import { BookOpen, RefreshCw, X, Loader2, HelpCircle, ChevronDown, Download, CheckCircle2, Lightbulb, PenTool, FileText, ChevronRight } from 'lucide-react';
 import { Button } from './Button';
 import { VocabHighlight } from './VocabHighlight';
 import { getWordDefinition } from '../services/gemini';
@@ -24,7 +24,7 @@ const QuestionItem: React.FC<{ question: Question; index: number }> = ({ questio
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="border border-stone-200 rounded-lg bg-white overflow-hidden transition-all hover:shadow-md print:border-stone-300 print:break-inside-avoid group">
+    <div className="question-container border border-stone-200 rounded-lg bg-white overflow-hidden transition-all hover:shadow-md print:border-stone-300 print:break-inside-avoid group">
       <button 
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-start text-left p-5 gap-4 hover:bg-stone-50 transition-colors print:hidden outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500/50"
@@ -50,7 +50,8 @@ const QuestionItem: React.FC<{ question: Question; index: number }> = ({ questio
         <h4 className="text-sm font-medium text-slate-900 leading-relaxed">{question.question}</h4>
       </div>
 
-      <div className={`${isOpen ? 'block' : 'hidden'} print:block px-5 pb-6 pt-2 animate-in slide-in-from-top-1 duration-200`}>
+      {/* Answer Key Wrapper */}
+      <div className={`answer-key ${isOpen ? 'block' : 'hidden'} print:block px-5 pb-6 pt-2 animate-in slide-in-from-top-1 duration-200`}>
         {/* Answer Box - Centered */}
         <div className="mx-auto max-w-2xl p-6 bg-stone-50/80 rounded-xl border border-stone-100 text-sm print:border-none print:bg-transparent print:p-0 space-y-5">
           
@@ -91,17 +92,22 @@ export const PassageViewer: React.FC<PassageViewerProps> = ({
   onReset
 }) => {
   const [activeDef, setActiveDef] = useState<DefinitionState>({ word: '', definition: null, isLoading: false, position: null });
+  const [printMode, setPrintMode] = useState<'student' | 'teacher'>('teacher');
+  const [isDownloadOpen, setIsDownloadOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const downloadRef = useRef<HTMLDivElement>(null);
 
   // Close popover when clicking elsewhere
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-         // check if click was on a clickable word
          const target = e.target as HTMLElement;
          if (!target.classList.contains('clickable-word')) {
            setActiveDef(prev => ({ ...prev, position: null }));
          }
+      }
+      if (downloadRef.current && !downloadRef.current.contains(e.target as Node)) {
+        setIsDownloadOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -128,6 +134,15 @@ export const PassageViewer: React.FC<PassageViewerProps> = ({
         }
         return prev;
     });
+  };
+
+  const handlePrint = (mode: 'student' | 'teacher') => {
+    setPrintMode(mode);
+    setIsDownloadOpen(false);
+    // Allow state to update and render correct classes before printing
+    setTimeout(() => {
+      window.print();
+    }, 100);
   };
 
   const processedContent = useMemo(() => {
@@ -170,14 +185,38 @@ export const PassageViewer: React.FC<PassageViewerProps> = ({
   };
 
   return (
-    <div className="animate-in fade-in duration-500 relative">
+    <div className={`animate-in fade-in duration-500 relative ${printMode === 'student' ? 'print-student-view' : ''}`}>
       
       {/* Control Bar (Hidden in Print) */}
-      <div className="flex justify-end mb-4 print:hidden">
-        <Button onClick={() => window.print()} variant="secondary" className="gap-2 shadow-sm">
+      <div className="flex justify-end mb-4 print:hidden relative" ref={downloadRef}>
+        <Button 
+          onClick={() => setIsDownloadOpen(!isDownloadOpen)} 
+          variant="secondary" 
+          className="gap-2 shadow-sm"
+        >
           <Download className="w-4 h-4" />
-          Download PDF
+          Export PDF
+          <ChevronDown className={`w-3 h-3 transition-transform ${isDownloadOpen ? 'rotate-180' : ''}`} />
         </Button>
+        
+        {isDownloadOpen && (
+          <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-lg shadow-xl border border-slate-200 overflow-hidden z-20 animate-in slide-in-from-top-2">
+            <button 
+              onClick={() => handlePrint('student')}
+              className="w-full text-left px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 border-b border-slate-100 transition-colors flex items-center justify-between group"
+            >
+              <span>Student Version <span className="text-xs text-slate-400 block font-normal mt-0.5">Without answers</span></span>
+              <FileText className="w-4 h-4 text-slate-300 group-hover:text-indigo-600" />
+            </button>
+            <button 
+              onClick={() => handlePrint('teacher')}
+              className="w-full text-left px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors flex items-center justify-between group"
+            >
+              <span>Teacher Version <span className="text-xs text-slate-400 block font-normal mt-0.5">With complete key</span></span>
+              <CheckCircle2 className="w-4 h-4 text-slate-300 group-hover:text-teal-600" />
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 print:block">
@@ -214,7 +253,7 @@ export const PassageViewer: React.FC<PassageViewerProps> = ({
 
         {/* Main Passage Column */}
         <div className="xl:col-span-8 space-y-8 print:w-full print:mb-8">
-          <div className="bg-[#fdfbf7] rounded-sm shadow-sm border border-stone-200 p-8 lg:p-16 relative overflow-hidden min-h-[600px] print:min-h-0 print:shadow-none print:border print:border-stone-300">
+          <div className="bg-[#fdfbf7] rounded-sm shadow-sm border border-stone-200 p-8 lg:p-16 relative overflow-hidden min-h-[600px] print:min-h-0 print:shadow-none print:border print:border-stone-300 print:break-after-page">
              <div className="absolute top-0 left-0 right-0 h-1 bg-indigo-900/10 print:hidden"></div>
              <div className="absolute bottom-0 left-0 right-0 h-1 bg-indigo-900/10 print:hidden"></div>
              
@@ -269,6 +308,40 @@ export const PassageViewer: React.FC<PassageViewerProps> = ({
                 <QuestionItem key={q.id} question={q} index={idx} />
               ))}
             </div>
+          </div>
+
+          {/* Writing Workshop Section */}
+          <div className="bg-white rounded-lg shadow-sm border border-stone-200 p-8 print:shadow-none print:border-t-2 print:border-stone-300 print:border-x-0 print:border-b-0 print:px-0 print:break-inside-avoid">
+             <div className="flex items-center gap-2 mb-6 border-b border-stone-100 pb-4 print:border-stone-300">
+               <div className="p-2 bg-indigo-50 rounded-lg print:hidden">
+                 <PenTool className="w-5 h-5 text-indigo-600" />
+               </div>
+               <h2 className="text-xl font-serif font-bold text-slate-900 print:text-2xl print:text-black">Writing Workshop</h2>
+             </div>
+
+             <div className="space-y-6">
+                <div className="bg-stone-50 p-6 rounded-lg border border-stone-100 print:bg-transparent print:border-stone-300 print:p-4">
+                  <h3 className="text-sm font-bold text-indigo-900 uppercase tracking-widest mb-3 print:text-black">Writing Prompt</h3>
+                  <p className="text-lg text-slate-800 font-serif leading-relaxed italic print:text-black">
+                    "{passage.writingPrompt}"
+                  </p>
+                </div>
+
+                <div className="sample-response print:mt-6">
+                  <details className="group print:open:block">
+                    <summary className="list-none flex items-center gap-2 text-sm font-medium text-slate-500 cursor-pointer hover:text-indigo-600 transition-colors print:hidden">
+                      <ChevronRight className="w-4 h-4 transition-transform group-open:rotate-90" />
+                      View Sample Band 6 Response
+                    </summary>
+                    <div className="mt-4 pl-4 border-l-2 border-indigo-100 animate-in slide-in-from-top-2 print:mt-0 print:border-l-0 print:pl-0 print:block">
+                       <h3 className="hidden print:block text-sm font-bold text-black uppercase tracking-widest mb-2 mt-4">Sample Response</h3>
+                       <p className="text-slate-600 leading-relaxed font-serif whitespace-pre-wrap print:text-black">
+                         {passage.sampleResponse}
+                       </p>
+                    </div>
+                  </details>
+                </div>
+             </div>
           </div>
           
           <div className="flex justify-center pt-4 print:hidden">
