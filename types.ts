@@ -50,6 +50,15 @@ export interface Passage {
   createdAt: number;
 }
 
+export interface SavedWord {
+  id: string;
+  text: string;
+  definition: string;
+  synonym: string;
+  exampleSentence: string;
+  createdAt: number;
+}
+
 export interface GenerationConfig {
   theme: Theme;
   customTopic?: string;

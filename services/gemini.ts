@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type, Schema } from "@google/genai";
-import { GenerationConfig, Passage, VocabularyWord, Difficulty } from "../types";
+import { GenerationConfig, Passage, VocabularyWord, Difficulty, SavedWord } from "../types";
 
 // Initialize Gemini Client
 // CRITICAL: API key is injected via process.env.API_KEY
@@ -41,6 +41,16 @@ const PASSAGE_SCHEMA: Schema = {
     sampleResponse: { type: Type.STRING, description: "A VCE-standard essay response (~250 words) structured with Introduction, TEEL body paragraphs, and Conclusion. Paragraphs must be separated by double newlines." }
   },
   required: ["title", "content", "vocabulary", "questions", "writingPrompt", "sampleResponse"]
+};
+
+const WORD_DETAILS_SCHEMA: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    definition: { type: Type.STRING, description: "A concise definition of the word/phrase." },
+    synonym: { type: Type.STRING, description: "A simple, easy-to-understand synonym." },
+    exampleSentence: { type: Type.STRING, description: "A simple, clear example sentence using the word." }
+  },
+  required: ["definition", "synonym", "exampleSentence"]
 };
 
 export const generatePassageContent = async (config: GenerationConfig): Promise<Omit<Passage, 'id' | 'createdAt' | 'theme' | 'type'>> => {
@@ -117,5 +127,51 @@ export const getWordDefinition = async (word: string): Promise<string> => {
   } catch (error) {
     console.error("Definition Error:", error);
     return "Could not load definition.";
+  }
+};
+
+export const generateWordDetails = async (text: string, context: string): Promise<Omit<SavedWord, 'id' | 'text' | 'createdAt'>> => {
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: `Provide details for the text: "${text}". The word was used in this context: "${context}".
+                 1. Definition: Clear meaning.
+                 2. Synonym: One simple, easy synonym.
+                 3. Example: Write a simple example sentence using the word "${text}".`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: WORD_DETAILS_SCHEMA
+      }
+    });
+
+    const data = JSON.parse(response.text || "{}");
+    return {
+      definition: data.definition || "Definition unavailable",
+      synonym: data.synonym || "N/A",
+      exampleSentence: data.exampleSentence || "No example available."
+    };
+  } catch (error) {
+    console.error("Word Details Error:", error);
+    throw error;
+  }
+};
+
+export const generateCollectionPassage = async (words: string[]): Promise<string> => {
+  if (words.length === 0) return "";
+  
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: `Write a coherent, creative short passage (approximately 100-150 words) that naturally incorporates all of the following vocabulary words: ${words.join(', ')}. 
+                 
+                 Requirements:
+                 1. Tone: Simple, accessible, and engaging for high school students. Avoid overly dense academic jargon.
+                 2. Context: Construct sentences that provide clear context clues to demonstrate the meaning of each vocabulary word. The goal is to help the student learn the word's usage through the story.
+                 3. Formatting: Highlight the vocabulary words in bold (using markdown **word**) when they appear in the text.`,
+    });
+    return response.text || "Could not generate passage.";
+  } catch (error) {
+    console.error("Collection Passage Generation Error:", error);
+    throw error;
   }
 };

@@ -1,16 +1,23 @@
 
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Passage, VocabularyWord, Question } from '../types';
+import { Passage, VocabularyWord, Question, SavedWord } from '../types';
 import { VocabCard } from './VocabCard';
-import { BookOpen, RefreshCw, X, Loader2, HelpCircle, ChevronDown, Download, CheckCircle2, Lightbulb, PenTool, FileText, ChevronRight } from 'lucide-react';
+import { BookOpen, RefreshCw, X, Loader2, HelpCircle, ChevronDown, Download, CheckCircle2, Lightbulb, PenTool, FileText, ChevronRight, Plus, Bookmark } from 'lucide-react';
 import { Button } from './Button';
 import { VocabHighlight } from './VocabHighlight';
-import { getWordDefinition } from '../services/gemini';
+import { getWordDefinition, generateWordDetails } from '../services/gemini';
 
 interface PassageViewerProps {
   passage: Passage;
   onReset: () => void;
+  onAddToCollection: (item: SavedWord) => void;
+}
+
+interface SelectionState {
+  text: string;
+  context: string;
+  position: { x: number, y: number } | null;
 }
 
 interface DefinitionState {
@@ -89,24 +96,39 @@ const QuestionItem: React.FC<{ question: Question; index: number }> = ({ questio
 
 export const PassageViewer: React.FC<PassageViewerProps> = ({ 
   passage, 
-  onReset
+  onReset,
+  onAddToCollection
 }) => {
   const [activeDef, setActiveDef] = useState<DefinitionState>({ word: '', definition: null, isLoading: false, position: null });
+  const [selection, setSelection] = useState<SelectionState | null>(null);
+  const [isAddingToCollection, setIsAddingToCollection] = useState(false);
   const [printMode, setPrintMode] = useState<'student' | 'teacher'>('teacher');
   const [isDownloadOpen, setIsDownloadOpen] = useState(false);
+  
   const containerRef = useRef<HTMLDivElement>(null);
   const downloadRef = useRef<HTMLDivElement>(null);
+  const selectionRef = useRef<HTMLDivElement>(null);
 
   // Close popover when clicking elsewhere
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
+      // Handle Definition Popover
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
          const target = e.target as HTMLElement;
-         // Don't close if clicking a clickable word
          if (!target.classList.contains('clickable-word')) {
            setActiveDef(prev => ({ ...prev, position: null }));
          }
       }
+      
+      // Handle Selection Popover
+      if (selectionRef.current && !selectionRef.current.contains(e.target as Node)) {
+         const sel = window.getSelection();
+         if (!sel || sel.isCollapsed) {
+            setSelection(null);
+         }
+      }
+
+      // Handle Download Dropdown
       if (downloadRef.current && !downloadRef.current.contains(e.target as Node)) {
         setIsDownloadOpen(false);
       }
@@ -115,57 +137,102 @@ export const PassageViewer: React.FC<PassageViewerProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const fetchDefinition = async (text: string, x: number, y: number) => {
+  // Watch for selection clearing
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed) {
+        // Selection cleared logic if needed
+      }
+    };
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => document.removeEventListener('selectionchange', handleSelectionChange);
+  }, []);
+
+  const handleWordClick = async (word: string, e: React.MouseEvent) => {
+    const sel = window.getSelection();
+    if (sel && !sel.isCollapsed) return;
+
+    setSelection(null);
+
+    const rect = (e.target as HTMLElement).getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top;
+
     setActiveDef({
-      word: text,
+      word,
       definition: null,
       isLoading: true,
       position: { x, y }
     });
 
-    const def = await getWordDefinition(text);
+    const def = await getWordDefinition(word);
     
     setActiveDef(prev => {
-        if (prev.word === text) {
+        if (prev.word === word) {
             return { ...prev, definition: def, isLoading: false };
         }
         return prev;
     });
   };
 
-  const handleWordClick = async (word: string, e: React.MouseEvent) => {
-    // Prevent single-word click if the user is making a selection
-    const selection = window.getSelection();
-    if (selection && !selection.isCollapsed) return;
-
-    const rect = (e.target as HTMLElement).getBoundingClientRect();
-    const x = rect.left + rect.width / 2;
-    const y = rect.top;
-
-    await fetchDefinition(word, x, y);
-  };
-
   const handleTextSelection = (e: React.MouseEvent) => {
-    const selection = window.getSelection();
-    if (!selection || selection.isCollapsed) return;
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed) return;
 
-    const text = selection.toString().trim();
-    if (!text || text.length > 50) return; // Limit length to avoid defining entire paragraphs
+    const text = sel.toString().trim();
+    if (!text || text.length > 100) return;
 
-    const range = selection.getRangeAt(0);
+    const range = sel.getRangeAt(0);
     const rect = range.getBoundingClientRect();
     
-    // Calculate position (centered above selection)
+    let context = text;
+    if (range.commonAncestorContainer.textContent) {
+        const fullText = range.commonAncestorContainer.textContent;
+        const start = Math.max(0, range.startOffset - 50);
+        const end = Math.min(fullText.length, range.endOffset + 50);
+        context = fullText.slice(start, end).trim();
+    }
+    
     const x = rect.left + rect.width / 2;
     const y = rect.top;
 
-    fetchDefinition(text, x, y);
+    setSelection({
+        text,
+        context,
+        position: { x, y }
+    });
+    
+    setActiveDef(prev => ({ ...prev, position: null }));
+  };
+
+  const handleSaveToCollection = async () => {
+    if (!selection) return;
+
+    setIsAddingToCollection(true);
+    try {
+        const details = await generateWordDetails(selection.text, selection.context);
+        const savedItem: SavedWord = {
+            id: crypto.randomUUID(),
+            text: selection.text,
+            definition: details.definition,
+            synonym: details.synonym,
+            exampleSentence: details.exampleSentence,
+            createdAt: Date.now()
+        };
+        onAddToCollection(savedItem);
+        setSelection(null);
+        window.getSelection()?.removeAllRanges();
+    } catch (error) {
+        console.error("Failed to add to collection", error);
+    } finally {
+        setIsAddingToCollection(false);
+    }
   };
 
   const handlePrint = (mode: 'student' | 'teacher') => {
     setPrintMode(mode);
     setIsDownloadOpen(false);
-    // Allow state to update and render correct classes before printing
     setTimeout(() => {
       window.print();
     }, 100);
@@ -213,7 +280,7 @@ export const PassageViewer: React.FC<PassageViewerProps> = ({
   return (
     <div className={`animate-in fade-in duration-500 relative ${printMode === 'student' ? 'print-student-view' : ''}`}>
       
-      {/* Control Bar (Hidden in Print) */}
+      {/* Control Bar */}
       <div className="flex justify-end mb-4 print:hidden relative" ref={downloadRef}>
         <Button 
           onClick={() => setIsDownloadOpen(!isDownloadOpen)} 
@@ -247,7 +314,7 @@ export const PassageViewer: React.FC<PassageViewerProps> = ({
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 print:block">
         
-        {/* Definition Popover (Hidden in Print) */}
+        {/* Definition Popover */}
         {activeDef.position && (
           <div 
             className="fixed z-50 transform -translate-x-1/2 -translate-y-full mb-2 w-64 animate-in fade-in zoom-in-95 duration-200 print:hidden"
@@ -277,6 +344,30 @@ export const PassageViewer: React.FC<PassageViewerProps> = ({
           </div>
         )}
 
+        {/* Selection / Add to Collection Popover */}
+        {selection && selection.position && (
+            <div
+                className="fixed z-50 transform -translate-x-1/2 -translate-y-full mb-3 animate-in fade-in zoom-in-95 duration-200 print:hidden"
+                style={{ left: selection.position.x, top: selection.position.y - 10 }}
+                ref={selectionRef}
+            >
+                <div className="bg-white rounded-lg shadow-xl border border-stone-200 p-2 flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-600 px-2 max-w-[150px] truncate border-r border-stone-200">
+                        {selection.text}
+                    </span>
+                    <Button 
+                        onClick={handleSaveToCollection} 
+                        isLoading={isAddingToCollection}
+                        className="h-8 px-3 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-md flex items-center gap-1.5"
+                    >
+                        {!isAddingToCollection && <Plus className="w-3 h-3" />}
+                        {isAddingToCollection ? 'Adding...' : 'Collection'}
+                    </Button>
+                </div>
+                <div className="absolute bottom-[-6px] left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-r border-b border-stone-200 transform rotate-45"></div>
+            </div>
+        )}
+
         {/* Main Passage Column */}
         <div className="xl:col-span-8 space-y-8 print:w-full print:mb-8">
           <div className="bg-[#fdfbf7] rounded-sm shadow-sm border border-stone-200 p-8 lg:p-16 relative overflow-hidden min-h-[600px] print:min-h-0 print:shadow-none print:border print:border-stone-300 print:break-after-page">
@@ -304,18 +395,14 @@ export const PassageViewer: React.FC<PassageViewerProps> = ({
                  urlTransform={(url) => url}
                  components={{
                    a: ({ href, children }) => {
-                     // Check if it's a vocab link
                      if (href?.startsWith('vocab:')) {
                        const id = href.split(':')[1];
                        const word = passage.vocabulary.find(v => v.id === id);
                        if (word) {
-                         // Renders span, not an anchor
                          return <VocabHighlight word={word}>{children}</VocabHighlight>;
                        }
-                       // Fallback to simple span if ID not found, do NOT render anchor
                        return <span className="underline decoration-indigo-300 decoration-dotted cursor-help">{children}</span>;
                      }
-                     // Fallback for actual links
                      return <a href={href} target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline print:text-black print:no-underline">{children}</a>;
                    },
                    p: ParagraphRenderer
@@ -400,7 +487,6 @@ export const PassageViewer: React.FC<PassageViewerProps> = ({
               </span>
             </div>
             
-            {/* Print Layout: Grid for vocab cards instead of scrollable list */}
             <div className="space-y-3 max-h-[calc(100vh-100px)] overflow-y-auto pr-2 pb-10 custom-scrollbar print:max-h-none print:overflow-visible print:space-y-0 print:grid print:grid-cols-2 print:gap-4 print:pb-0">
               {passage.vocabulary.map((word) => (
                 <VocabCard 
