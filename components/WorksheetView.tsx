@@ -30,6 +30,23 @@ export const WorksheetView: React.FC<WorksheetViewProps> = ({ passage, worksheet
     </div>
   );
 
+  // Robust answer checking to handle potential AI inconsistencies (e.g. "A" vs "Option A")
+  const isCorrectOption = (option: string, index: number, correctAnswer: string) => {
+    if (viewMode !== 'teacher') return false;
+
+    // 1. Exact or Case-Insensitive Match
+    if (option.trim().toLowerCase() === correctAnswer.trim().toLowerCase()) return true;
+
+    // 2. Index/Letter Match (e.g. Correct answer is "A" and this is the first option)
+    const optionLetter = String.fromCharCode(65 + index); // 0->A, 1->B...
+    if (correctAnswer.trim().toUpperCase() === optionLetter) return true;
+
+    // 3. "Option X" Match
+    if (correctAnswer.trim().toUpperCase() === `OPTION ${optionLetter}`) return true;
+
+    return false;
+  };
+
   return (
     <div className="animate-in fade-in duration-500">
       {/* Control Bar - Hidden on Print */}
@@ -183,14 +200,17 @@ export const WorksheetView: React.FC<WorksheetViewProps> = ({ passage, worksheet
                  <div key={q.id} className="text-sm print:break-inside-avoid">
                    <p className="font-medium mb-2 print:text-black">{i + 1}. {q.question}</p>
                    <ul className="space-y-1 pl-4">
-                     {q.options?.map((opt, optIdx) => (
-                       <li key={optIdx} className="flex items-center gap-2">
-                         <div className={`w-4 h-4 rounded-full border border-slate-300 flex items-center justify-center ${viewMode === 'teacher' && opt === q.answer ? 'bg-emerald-600 border-emerald-600' : ''}`}>
-                            {viewMode === 'teacher' && opt === q.answer && <div className="w-1.5 h-1.5 bg-white rounded-full"></div>}
-                         </div>
-                         <span className={`${viewMode === 'teacher' && opt === q.answer ? 'font-bold text-emerald-700' : 'text-slate-600'} print:text-black`}>{opt}</span>
-                       </li>
-                     ))}
+                     {q.options?.map((opt, optIdx) => {
+                       const isCorrect = isCorrectOption(opt, optIdx, q.answer);
+                       return (
+                         <li key={optIdx} className="flex items-center gap-2">
+                           <div className={`w-4 h-4 rounded-full border border-slate-300 flex items-center justify-center ${isCorrect ? 'bg-emerald-600 border-emerald-600' : ''}`}>
+                              {isCorrect && <div className="w-1.5 h-1.5 bg-white rounded-full"></div>}
+                           </div>
+                           <span className={`${isCorrect ? 'font-bold text-emerald-700' : 'text-slate-600'} print:text-black`}>{opt}</span>
+                         </li>
+                       );
+                     })}
                    </ul>
                  </div>
                ))}

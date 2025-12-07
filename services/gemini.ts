@@ -226,7 +226,10 @@ export const generateWorksheet = async (passageTopic: string, vocabWords: string
     1. USE the googleSearch tool with the query: "site:youtube.com ${passageTopic} educational video duration 5-15 minutes".
     2. Extract the EXACT Title of the first valid video result found.
     3. Generate 5 Multiple Choice Questions (MCQ) about the general topic of the video.
+       - Provide 4 distinct options for each question.
+       - The 'answer' field MUST be the EXACT text string of the correct option from the 'options' array.
     4. Generate 5 True/False questions about the general topic.
+       - The 'answer' field must be "True" or "False".
 
     Output the result in this JSON format inside a code block:
     \`\`\`json
@@ -236,7 +239,7 @@ export const generateWorksheet = async (passageTopic: string, vocabWords: string
         "url": "https://www.youtube.com/watch?v=...",
         "description": "Brief summary",
         "mcqs": [
-          { "question": "...", "options": ["A", "B", "C", "D"], "answer": "..." }
+          { "question": "...", "options": ["Option A", "Option B", "Option C", "Option D"], "answer": "Option A" }
         ],
         "trueFalse": [
           { "question": "...", "answer": "True" }
@@ -289,6 +292,8 @@ export const generateWorksheet = async (passageTopic: string, vocabWords: string
             1. A generic Title.
             2. A generic Description.
             3. 5 Multiple Choice Questions (MCQ) about the general concepts of ${passageTopic}.
+               - Provide 4 options per question.
+               - IMPORTANT: The 'answer' must be the EXACT string of one of the options.
             4. 5 True/False questions about ${passageTopic}.
 
             Output JSON matching this schema:
