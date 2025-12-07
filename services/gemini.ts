@@ -53,6 +53,24 @@ const WORD_DETAILS_SCHEMA: Schema = {
   required: ["definition", "synonym", "exampleSentence"]
 };
 
+const VOCAB_EXERCISE_SCHEMA: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    vocabExercises: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          textWithBlanks: { type: Type.STRING, description: "Passage with the target word replaced by __________." },
+          answers: { type: Type.ARRAY, items: { type: Type.STRING }, description: "The correct word(s) for the blanks." }
+        },
+        required: ["textWithBlanks", "answers"]
+      }
+    }
+  },
+  required: ["vocabExercises"]
+};
+
 export const generatePassageContent = async (config: GenerationConfig): Promise<Omit<Passage, 'id' | 'createdAt' | 'theme' | 'type'>> => {
   const topic = config.theme === 'Custom Topic' ? config.customTopic : config.theme;
   
@@ -178,90 +196,147 @@ export const generateCollectionPassage = async (words: string[]): Promise<string
 
 export const generateWorksheet = async (passageTopic: string, vocabWords: string[]): Promise<WorksheetData> => {
   const vocabList = vocabWords.length > 0 ? vocabWords.join(', ') : "sophisticated academic English vocabulary";
-  
-  const prompt = `
-    Create a comprehensive educational worksheet based on the topic: "${passageTopic}".
 
-    Task 1: Vocabulary Fill-in-the-Blanks
-    - Create 5 distinct, short passages (around 150 words each) related to the theme "${passageTopic}".
-    - Each passage must use a subset of these vocabulary words: [${vocabList}].
-    - In the 'textWithBlanks' output, replace the target vocabulary words with '__________'.
-    - Provide the correct words in the 'answers' array.
+  // We split this into two parallel requests for reliability:
+  // 1. Vocab generation (Uses JSON mode, highly structured)
+  // 2. Video search (Uses Tools, parsing text manually, with fallback)
 
-    Task 2: Video Activity
-    - Use the Google Search tool to find a SPECIFIC, high-quality, educational YouTube video (approx 5-15 minutes) relevant to "${passageTopic}".
-    - CRITICAL: You MUST use the search tool to find a real, existing YouTube URL. Ensure the video is playable. 
-    - Provide the actual Title and the EXACT URL found (e.g., starts with https://www.youtube.com/watch?v=). Do NOT invent a URL.
-    - Provide a brief description.
-    - Generate 5 Multiple Choice Questions (MCQ) based on the likely content of such a video (general knowledge of the topic).
-    - Generate 5 True/False questions based on the topic.
+  // --- Step 1: Generate Vocabulary Exercises ---
+  const vocabPrompt = `
+    Create 5 distinct, short passages (around 150 words each) related to the theme "${passageTopic}".
+    Each passage must use a subset of these vocabulary words: [${vocabList}].
+    In the 'textWithBlanks' output, replace the target vocabulary words with '__________'.
+    Provide the correct words in the 'answers' array.
+  `;
 
-    IMPORTANT: Output the result strictly in valid JSON format. Do not use markdown code blocks like \`\`\`json.
+  const vocabRequest = ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: vocabPrompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: VOCAB_EXERCISE_SCHEMA
+    }
+  });
+
+  // --- Step 2: Generate Video Activity ---
+  // We use site:youtube.com to help the grounding tool find specific video pages
+  const videoPrompt = `
+    Task: Find a specific, high-quality, educational YouTube video (MUST be between 5 to 15 minutes long) relevant to the topic: "${passageTopic}".
     
-    The JSON structure must be:
+    1. USE the googleSearch tool with the query: "site:youtube.com ${passageTopic} educational video duration 5-15 minutes".
+    2. Extract the EXACT Title of the first valid video result found.
+    3. Generate 5 Multiple Choice Questions (MCQ) about the general topic of the video.
+    4. Generate 5 True/False questions about the general topic.
+
+    Output the result in this JSON format inside a code block:
+    \`\`\`json
     {
-      "vocabExercises": [
-        {
-          "textWithBlanks": "Passage text...",
-          "answers": ["word1", "word2"]
-        }
-      ],
       "videoActivity": {
         "title": "Video Title",
         "url": "https://www.youtube.com/watch?v=...",
-        "description": "Brief video summary",
+        "description": "Brief summary",
         "mcqs": [
-          { 
-            "question": "Question text?", 
-            "options": ["A", "B", "C", "D"], 
-            "answer": "Correct Option Text" 
-          }
+          { "question": "...", "options": ["A", "B", "C", "D"], "answer": "..." }
         ],
         "trueFalse": [
-          { 
-            "question": "Statement?", 
-            "answer": "True" 
-          }
+          { "question": "...", "answer": "True" }
         ]
       }
     }
+    \`\`\`
   `;
 
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        tools: [{ googleSearch: {} }], 
-        // NOTE: responseMimeType and responseSchema are NOT supported when using tools.
-        // We rely on the prompt to enforce strict JSON output.
-      },
-    });
-
-    let text = response.text;
-    if (!text) throw new Error("No worksheet content generated");
-    
-    // Clean up potential markdown formatting if the model adds it despite instructions
-    text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    
-    // Attempt to extract JSON if there is conversational filler text
-    const start = text.indexOf('{');
-    const end = text.lastIndexOf('}');
-    if (start !== -1 && end !== -1) {
-      text = text.substring(start, end + 1);
+  const videoRequest = ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: videoPrompt,
+    config: {
+      tools: [{ googleSearch: {} }],
     }
+  });
+
+  try {
+    const [vocabResponse, videoResponse] = await Promise.all([vocabRequest, videoRequest]);
+
+    // --- Process Vocab Response ---
+    const vocabText = vocabResponse.text;
+    if (!vocabText) throw new Error("No vocabulary content generated");
+    const vocabData = JSON.parse(vocabText);
+
+    // --- Process Video Response ---
+    let videoData;
+    let videoText = videoResponse.text || "";
+    const groundingChunks = videoResponse.candidates?.[0]?.groundingMetadata?.groundingChunks;
     
-    const data = JSON.parse(text);
+    try {
+        // Attempt to extract JSON from tool response
+        const jsonMatch = videoText.match(/```json\n([\s\S]*?)\n```/) || 
+                          videoText.match(/```\n([\s\S]*?)\n```/) || 
+                          videoText.match(/({[\s\S]*})/);
+        
+        const jsonString = jsonMatch ? jsonMatch[1] || jsonMatch[0] : videoText;
+        videoData = JSON.parse(jsonString);
+
+        if (!videoData.videoActivity) throw new Error("Invalid structure");
+    } catch (parseError) {
+        console.warn("Primary video search failed or returned invalid JSON. Attempting fallback generation...", parseError);
+        
+        // Fallback: Generate generic video activity if tool use fails
+        const fallbackPrompt = `
+            Create a generic educational video activity worksheet for the topic "${passageTopic}".
+            Since we cannot find a specific video right now, invent a generic title like "Introduction to ${passageTopic}".
+            
+            Generate:
+            1. A generic Title.
+            2. A generic Description.
+            3. 5 Multiple Choice Questions (MCQ) about the general concepts of ${passageTopic}.
+            4. 5 True/False questions about ${passageTopic}.
+
+            Output JSON matching this schema:
+            {
+              "videoActivity": {
+                "title": "Introduction to ${passageTopic}",
+                "url": "https://www.youtube.com/results?search_query=${encodeURIComponent(passageTopic)}",
+                "description": "A comprehensive educational video covering key concepts of ${passageTopic}.",
+                "mcqs": [{ "question": "...", "options": ["..."], "answer": "..." }],
+                "trueFalse": [{ "question": "...", "answer": "True" }]
+              }
+            }
+        `;
+
+        const fallbackResponse = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: fallbackPrompt,
+            config: { responseMimeType: "application/json" }
+        });
+        
+        videoData = JSON.parse(fallbackResponse.text || "{}");
+    }
+
+    // Extract verified URL from Grounding Metadata (only if available and matched)
+    let verifiedUrl = videoData.videoActivity.url;
+    let verifiedTitle = videoData.videoActivity.title;
+
+    if (groundingChunks) {
+      for (const chunk of groundingChunks) {
+        if (chunk.web?.title && (chunk.web.uri?.includes('youtube.com') || chunk.web.uri?.includes('youtu.be'))) {
+           verifiedTitle = chunk.web.title;
+           verifiedUrl = chunk.web.uri; 
+           break;
+        }
+      }
+    }
 
     return {
-      vocabExercises: data.vocabExercises.map((ex: any) => ({
+      vocabExercises: vocabData.vocabExercises.map((ex: any) => ({
         ...ex,
         id: crypto.randomUUID()
       })),
       videoActivity: {
-        ...data.videoActivity,
-        mcqs: data.videoActivity.mcqs.map((q: any) => ({ ...q, id: crypto.randomUUID(), type: 'MCQ' })),
-        trueFalse: data.videoActivity.trueFalse.map((q: any) => ({ ...q, id: crypto.randomUUID(), type: 'TF' }))
+        ...videoData.videoActivity,
+        url: verifiedUrl,
+        title: verifiedTitle,
+        mcqs: videoData.videoActivity.mcqs.map((q: any) => ({ ...q, id: crypto.randomUUID(), type: 'MCQ' })),
+        trueFalse: videoData.videoActivity.trueFalse.map((q: any) => ({ ...q, id: crypto.randomUUID(), type: 'TF' }))
       }
     };
   } catch (error) {

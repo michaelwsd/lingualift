@@ -68,17 +68,19 @@ export const WorksheetView: React.FC<WorksheetViewProps> = ({ passage, worksheet
       {/* Printable Sheet */}
       <div className="max-w-4xl mx-auto bg-white p-8 md:p-16 shadow-sm min-h-screen print:shadow-none print:p-0 print:max-w-none">
         
-        {/* Header */}
-        <header className="text-center mb-12 border-b-2 border-double border-slate-900 pb-8">
-          <h1 className="text-4xl font-serif font-bold text-slate-900 mb-2 uppercase tracking-tight print:text-black">
-            {passage.title}
-          </h1>
-          <div className="flex justify-center gap-6 text-sm font-medium text-slate-600 print:text-black">
-            <span>Theme: {passage.theme}</span>
-            <span>•</span>
-            <span>Level: VCE English</span>
-            <span>•</span>
-            <span>{viewMode === 'teacher' ? 'TEACHER ANSWER KEY' : 'STUDENT WORKSHEET'}</span>
+        {/* Header - Centered Title Page for Print */}
+        <header className="text-center mb-12 border-b-2 border-double border-slate-900 pb-8 print:h-screen print:flex print:flex-col print:justify-center print:items-center print:border-none print:mb-0 print:pb-0 print:break-after-page">
+          <div className="w-full">
+            <h1 className="text-4xl font-serif font-bold text-slate-900 mb-2 uppercase tracking-tight print:text-5xl print:mb-6">
+              {passage.title}
+            </h1>
+            <div className="flex justify-center gap-6 text-sm font-medium text-slate-600 print:text-black print:text-lg">
+              <span>Theme: {passage.theme}</span>
+              <span>•</span>
+              <span>Level: VCE English</span>
+              <span>•</span>
+              <span>{viewMode === 'teacher' ? 'TEACHER ANSWER KEY' : 'STUDENT WORKSHEET'}</span>
+            </div>
           </div>
         </header>
 
@@ -114,10 +116,8 @@ export const WorksheetView: React.FC<WorksheetViewProps> = ({ passage, worksheet
           </div>
         </section>
         
-        <div className="print:break-after-page"></div>
-
         {/* Part 2: Vocabulary Application */}
-        <section className="mb-12 print:break-inside-avoid">
+        <section className="mb-12 print:break-inside-avoid print:break-before-page">
           <SectionHeader title="Part 2: Vocabulary Application" icon={CheckCircle2} />
           
           <div className="mb-6 bg-slate-50 p-4 rounded border border-slate-200 print:bg-transparent print:border-black">
@@ -133,7 +133,7 @@ export const WorksheetView: React.FC<WorksheetViewProps> = ({ passage, worksheet
             {worksheetData.vocabExercises.map((ex, idx) => (
                <div key={ex.id} className="print:break-inside-avoid">
                   <h3 className="font-bold text-sm text-slate-500 uppercase mb-2 print:text-black">Passage {idx + 1}</h3>
-                  <div className="p-5 bg-white border border-slate-200 rounded-lg shadow-sm print:shadow-none print:border-black print:p-0">
+                  <div className="p-5 bg-white border border-slate-200 rounded-lg shadow-sm print:shadow-none print:border-none print:p-0">
                     <p className="leading-loose text-slate-800 font-serif print:text-black">
                       {ex.textWithBlanks.split('__________').map((part, i, arr) => (
                         <React.Fragment key={i}>
@@ -156,10 +156,8 @@ export const WorksheetView: React.FC<WorksheetViewProps> = ({ passage, worksheet
           </div>
         </section>
 
-        <div className="print:break-after-page"></div>
-
         {/* Part 3: Video Activity */}
-        <section className="mb-12 print:break-inside-avoid">
+        <section className="mb-12 print:break-inside-avoid print:break-before-page">
           <SectionHeader title="Part 3: Video Analysis" icon={Video} />
           
           <div className="flex gap-4 mb-8 bg-slate-50 p-4 rounded-lg border border-slate-200 print:border-black print:bg-transparent">
@@ -167,13 +165,13 @@ export const WorksheetView: React.FC<WorksheetViewProps> = ({ passage, worksheet
                <Youtube className="w-8 h-8 text-red-600" />
              </div>
              <div>
-               <h3 className="font-bold text-lg text-slate-900 mb-1 print:text-black">{worksheetData.videoActivity.title}</h3>
-               <p className="text-sm text-slate-600 mb-2 italic print:text-black">{worksheetData.videoActivity.description}</p>
-               {worksheetData.videoActivity.url && (
-                 <a href={worksheetData.videoActivity.url} target="_blank" rel="noopener noreferrer" className="text-indigo-600 underline text-sm font-medium print:text-black print:no-underline">
-                   {worksheetData.videoActivity.url}
-                 </a>
-               )}
+               <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block print:text-black">Video Assignment</span>
+               <h3 className="font-bold text-lg text-slate-900 mb-2 print:text-black leading-tight">
+                 {worksheetData.videoActivity.title}
+               </h3>
+               <p className="text-sm text-slate-600 italic print:text-black">
+                 {worksheetData.videoActivity.description}
+               </p>
              </div>
           </div>
 
@@ -241,10 +239,8 @@ export const WorksheetView: React.FC<WorksheetViewProps> = ({ passage, worksheet
           </div>
         </section>
         
-        <div className="print:break-after-page"></div>
-
         {/* Part 4: Writing Task */}
-        <section className="print:break-inside-avoid">
+        <section className="print:break-inside-avoid print:break-before-page">
            <SectionHeader title="Part 4: Writing Task" icon={FileText} />
            
            <div className="bg-stone-50 border border-stone-200 p-6 rounded-lg mb-8 print:bg-transparent print:border-black print:p-4">
@@ -252,10 +248,10 @@ export const WorksheetView: React.FC<WorksheetViewProps> = ({ passage, worksheet
              <p className="text-lg font-serif italic text-slate-900 print:text-black">"{passage.writingPrompt}"</p>
            </div>
 
-           {/* Lined paper effect for writing */}
-           <div className="flex flex-col">
-             {Array.from({ length: 18 }).map((_, i) => (
-               <div key={i} className="w-full border-b border-stone-300 border-dashed h-10 print:h-12"></div>
+           {/* Lined paper effect for writing - Optimized for page fit */}
+           <div className="flex flex-col mt-4">
+             {Array.from({ length: 14 }).map((_, i) => (
+               <div key={i} className="w-full border-b border-stone-300 border-dashed h-9 print:h-9"></div>
              ))}
            </div>
         </section>
