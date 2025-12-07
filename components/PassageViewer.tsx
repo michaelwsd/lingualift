@@ -1,17 +1,19 @@
 
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Passage, VocabularyWord, Question, SavedWord } from '../types';
+import { Passage, VocabularyWord, Question, SavedWord, WorksheetData } from '../types';
 import { VocabCard } from './VocabCard';
-import { BookOpen, RefreshCw, X, Loader2, HelpCircle, ChevronDown, Download, CheckCircle2, Lightbulb, PenTool, FileText, ChevronRight, Plus, Bookmark } from 'lucide-react';
+import { BookOpen, RefreshCw, X, Loader2, HelpCircle, ChevronDown, Download, CheckCircle2, Lightbulb, PenTool, FileText, ChevronRight, Plus, Bookmark, FileSpreadsheet } from 'lucide-react';
 import { Button } from './Button';
 import { VocabHighlight } from './VocabHighlight';
-import { getWordDefinition, generateWordDetails } from '../services/gemini';
+import { getWordDefinition, generateWordDetails, generateWorksheet } from '../services/gemini';
 
 interface PassageViewerProps {
   passage: Passage;
+  collection: SavedWord[];
   onReset: () => void;
   onAddToCollection: (item: SavedWord) => void;
+  onWorksheetGenerated: (data: WorksheetData) => void;
 }
 
 interface SelectionState {
@@ -96,12 +98,15 @@ const QuestionItem: React.FC<{ question: Question; index: number }> = ({ questio
 
 export const PassageViewer: React.FC<PassageViewerProps> = ({ 
   passage, 
+  collection,
   onReset,
-  onAddToCollection
+  onAddToCollection,
+  onWorksheetGenerated
 }) => {
   const [activeDef, setActiveDef] = useState<DefinitionState>({ word: '', definition: null, isLoading: false, position: null });
   const [selection, setSelection] = useState<SelectionState | null>(null);
   const [isAddingToCollection, setIsAddingToCollection] = useState(false);
+  const [isGeneratingWorksheet, setIsGeneratingWorksheet] = useState(false);
   const [printMode, setPrintMode] = useState<'student' | 'teacher'>('teacher');
   const [isDownloadOpen, setIsDownloadOpen] = useState(false);
   
@@ -230,6 +235,20 @@ export const PassageViewer: React.FC<PassageViewerProps> = ({
     }
   };
 
+  const handleGenerateWorksheet = async () => {
+    setIsGeneratingWorksheet(true);
+    try {
+      const vocabWords = collection.map(w => w.text);
+      const data = await generateWorksheet(passage.title, vocabWords);
+      onWorksheetGenerated(data);
+    } catch (error) {
+      console.error("Failed to generate worksheet", error);
+      alert("Failed to generate worksheet. Please try again.");
+    } finally {
+      setIsGeneratingWorksheet(false);
+    }
+  };
+
   const handlePrint = (mode: 'student' | 'teacher') => {
     setPrintMode(mode);
     setIsDownloadOpen(false);
@@ -281,7 +300,16 @@ export const PassageViewer: React.FC<PassageViewerProps> = ({
     <div className={`animate-in fade-in duration-500 relative ${printMode === 'student' ? 'print-student-view' : ''}`}>
       
       {/* Control Bar */}
-      <div className="flex justify-end mb-4 print:hidden relative" ref={downloadRef}>
+      <div className="flex justify-end gap-3 mb-4 print:hidden relative" ref={downloadRef}>
+        <Button 
+          onClick={handleGenerateWorksheet} 
+          variant="primary" 
+          className="gap-2 shadow-sm bg-teal-700 hover:bg-teal-800 focus:ring-teal-600"
+          isLoading={isGeneratingWorksheet}
+        >
+          <FileSpreadsheet className="w-4 h-4" />
+          Create Worksheet
+        </Button>
         <Button 
           onClick={() => setIsDownloadOpen(!isDownloadOpen)} 
           variant="secondary" 

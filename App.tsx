@@ -1,16 +1,18 @@
 
 import React, { useState } from 'react';
-import { GenerationConfig, Passage, SavedWord } from './types';
+import { GenerationConfig, Passage, SavedWord, WorksheetData } from './types';
 import { generatePassageContent } from './services/gemini';
 import { GeneratorForm } from './components/GeneratorForm';
 import { PassageViewer } from './components/PassageViewer';
 import { CollectionView } from './components/CollectionView';
+import { WorksheetView } from './components/WorksheetView';
 import { Library, BookMarked } from 'lucide-react';
 
 export default function App() {
   const [passage, setPassage] = useState<Passage | null>(null);
   const [collection, setCollection] = useState<SavedWord[]>([]);
-  const [currentView, setCurrentView] = useState<'generator' | 'passage' | 'collection'>('generator');
+  const [worksheetData, setWorksheetData] = useState<WorksheetData | null>(null);
+  const [currentView, setCurrentView] = useState<'generator' | 'passage' | 'collection' | 'worksheet'>('generator');
   const [isGenerating, setIsGenerating] = useState(false);
   
   const handleGenerate = async (config: GenerationConfig) => {
@@ -24,6 +26,7 @@ export default function App() {
         type: config.literatureType,
         createdAt: Date.now()
       });
+      setWorksheetData(null); // Reset worksheet when new passage is generated
       setCurrentView('passage');
     } catch (error) {
       console.error(error);
@@ -39,6 +42,11 @@ export default function App() {
 
   const handleRemoveFromCollection = (id: string) => {
     setCollection(prev => prev.filter(item => item.id !== id));
+  };
+
+  const handleWorksheetGenerated = (data: WorksheetData) => {
+    setWorksheetData(data);
+    setCurrentView('worksheet');
   };
 
   return (
@@ -87,6 +95,13 @@ export default function App() {
                onBack={() => setCurrentView(passage ? 'passage' : 'generator')}
                onRemove={handleRemoveFromCollection}
              />
+          ) : currentView === 'worksheet' && passage && worksheetData ? (
+             <WorksheetView
+                passage={passage}
+                worksheetData={worksheetData}
+                collection={collection}
+                onBack={() => setCurrentView('passage')}
+             />
           ) : !passage ? (
             <div className="flex flex-col items-center justify-center min-h-[60vh] animate-in fade-in zoom-in duration-500">
               <div className="text-center mb-10 max-w-2xl">
@@ -100,11 +115,14 @@ export default function App() {
           ) : (
             <PassageViewer 
               passage={passage} 
+              collection={collection}
               onReset={() => {
                 setPassage(null);
+                setWorksheetData(null);
                 setCurrentView('generator');
               }}
               onAddToCollection={handleAddToCollection}
+              onWorksheetGenerated={handleWorksheetGenerated}
             />
           )}
         </div>

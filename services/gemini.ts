@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type, Schema } from "@google/genai";
-import { GenerationConfig, Passage, VocabularyWord, Difficulty, SavedWord } from "../types";
+import { GenerationConfig, Passage, VocabularyWord, Difficulty, SavedWord, WorksheetData } from "../types";
 
 // Initialize Gemini Client
 // CRITICAL: API key is injected via process.env.API_KEY
@@ -172,6 +172,100 @@ export const generateCollectionPassage = async (words: string[]): Promise<string
     return response.text || "Could not generate passage.";
   } catch (error) {
     console.error("Collection Passage Generation Error:", error);
+    throw error;
+  }
+};
+
+export const generateWorksheet = async (passageTopic: string, vocabWords: string[]): Promise<WorksheetData> => {
+  const vocabList = vocabWords.length > 0 ? vocabWords.join(', ') : "sophisticated academic English vocabulary";
+  
+  const prompt = `
+    Create a comprehensive educational worksheet based on the topic: "${passageTopic}".
+
+    Task 1: Vocabulary Fill-in-the-Blanks
+    - Create 5 distinct, short passages (around 150 words each) related to the theme "${passageTopic}".
+    - Each passage must use a subset of these vocabulary words: [${vocabList}].
+    - In the 'textWithBlanks' output, replace the target vocabulary words with '__________'.
+    - Provide the correct words in the 'answers' array.
+
+    Task 2: Video Activity
+    - Use the Google Search tool to find a SPECIFIC, high-quality, educational YouTube video (approx 5-15 minutes) relevant to "${passageTopic}".
+    - CRITICAL: You MUST use the search tool to find a real, existing YouTube URL. Ensure the video is playable. 
+    - Provide the actual Title and the EXACT URL found (e.g., starts with https://www.youtube.com/watch?v=). Do NOT invent a URL.
+    - Provide a brief description.
+    - Generate 5 Multiple Choice Questions (MCQ) based on the likely content of such a video (general knowledge of the topic).
+    - Generate 5 True/False questions based on the topic.
+
+    IMPORTANT: Output the result strictly in valid JSON format. Do not use markdown code blocks like \`\`\`json.
+    
+    The JSON structure must be:
+    {
+      "vocabExercises": [
+        {
+          "textWithBlanks": "Passage text...",
+          "answers": ["word1", "word2"]
+        }
+      ],
+      "videoActivity": {
+        "title": "Video Title",
+        "url": "https://www.youtube.com/watch?v=...",
+        "description": "Brief video summary",
+        "mcqs": [
+          { 
+            "question": "Question text?", 
+            "options": ["A", "B", "C", "D"], 
+            "answer": "Correct Option Text" 
+          }
+        ],
+        "trueFalse": [
+          { 
+            "question": "Statement?", 
+            "answer": "True" 
+          }
+        ]
+      }
+    }
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        tools: [{ googleSearch: {} }], 
+        // NOTE: responseMimeType and responseSchema are NOT supported when using tools.
+        // We rely on the prompt to enforce strict JSON output.
+      },
+    });
+
+    let text = response.text;
+    if (!text) throw new Error("No worksheet content generated");
+    
+    // Clean up potential markdown formatting if the model adds it despite instructions
+    text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    
+    // Attempt to extract JSON if there is conversational filler text
+    const start = text.indexOf('{');
+    const end = text.lastIndexOf('}');
+    if (start !== -1 && end !== -1) {
+      text = text.substring(start, end + 1);
+    }
+    
+    const data = JSON.parse(text);
+
+    return {
+      vocabExercises: data.vocabExercises.map((ex: any) => ({
+        ...ex,
+        id: crypto.randomUUID()
+      })),
+      videoActivity: {
+        ...data.videoActivity,
+        mcqs: data.videoActivity.mcqs.map((q: any) => ({ ...q, id: crypto.randomUUID(), type: 'MCQ' })),
+        trueFalse: data.videoActivity.trueFalse.map((q: any) => ({ ...q, id: crypto.randomUUID(), type: 'TF' }))
+      }
+    };
+  } catch (error) {
+    console.error("Worksheet Generation Error:", error);
     throw error;
   }
 };

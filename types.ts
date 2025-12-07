@@ -65,3 +65,30 @@ export interface GenerationConfig {
   literatureType: LiteratureType;
   difficulty: Difficulty;
 }
+
+export interface VocabExercise {
+  id: string;
+  textWithBlanks: string;
+  answers: string[];
+}
+
+export interface VideoQuestion {
+  id: string;
+  question: string;
+  options?: string[]; // For MCQ
+  answer: string; // String for both MCQ answer and T/F (stored as string "True"/"False")
+  type: 'MCQ' | 'TF';
+}
+
+export interface VideoActivity {
+  title: string;
+  url: string;
+  description: string;
+  mcqs: VideoQuestion[];
+  trueFalse: VideoQuestion[];
+}
+
+export interface WorksheetData {
+  vocabExercises: VocabExercise[];
+  videoActivity: VideoActivity;
+}
