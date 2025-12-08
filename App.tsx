@@ -6,9 +6,11 @@ import { GeneratorForm } from './components/GeneratorForm';
 import { PassageViewer } from './components/PassageViewer';
 import { CollectionView } from './components/CollectionView';
 import { WorksheetView } from './components/WorksheetView';
-import { Library, BookMarked } from 'lucide-react';
+import { LoginPage } from './components/LoginPage';
+import { Library, BookMarked, LogOut } from 'lucide-react';
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passage, setPassage] = useState<Passage | null>(null);
   const [collection, setCollection] = useState<SavedWord[]>([]);
   const [worksheetData, setWorksheetData] = useState<WorksheetData | null>(null);
@@ -49,6 +51,18 @@ export default function App() {
     setCurrentView('worksheet');
   };
 
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setPassage(null);
+    setCollection([]);
+    setWorksheetData(null);
+    setCurrentView('generator');
+  };
+
+  if (!isAuthenticated) {
+    return <LoginPage onLogin={setIsAuthenticated} />;
+  }
+
   return (
     <div className="min-h-screen bg-stone-100 text-slate-900 font-sans selection:bg-indigo-200">
       {/* Navigation Header */}
@@ -69,18 +83,30 @@ export default function App() {
             </div>
           </button>
 
-          <button 
-            onClick={() => setCurrentView('collection')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${currentView === 'collection' ? 'bg-indigo-50 text-indigo-900' : 'text-slate-600 hover:bg-stone-50'}`}
-          >
-            <BookMarked className="w-5 h-5" />
-            <span>Collection</span>
-            {collection.length > 0 && (
-              <span className="bg-indigo-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                {collection.length}
-              </span>
-            )}
-          </button>
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => setCurrentView('collection')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${currentView === 'collection' ? 'bg-indigo-50 text-indigo-900' : 'text-slate-600 hover:bg-stone-50'}`}
+            >
+              <BookMarked className="w-5 h-5" />
+              <span>Collection</span>
+              {collection.length > 0 && (
+                <span className="bg-indigo-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                  {collection.length}
+                </span>
+              )}
+            </button>
+            
+            <div className="h-6 w-px bg-stone-200"></div>
+
+            <button
+              onClick={handleLogout}
+              className="p-2 text-slate-400 hover:text-slate-700 hover:bg-stone-50 rounded-lg transition-colors"
+              title="Sign Out"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </header>
 
