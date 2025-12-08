@@ -71,6 +71,31 @@ const VOCAB_EXERCISE_SCHEMA: Schema = {
   required: ["vocabExercises"]
 };
 
+// Fallback video data for when search fails completely
+const FALLBACK_VIDEOS = [
+  {
+    title: "The benefits of a bilingual brain",
+    channel: "TED-Ed",
+    url: "https://www.youtube.com/watch?v=MMmOLN5zBLY",
+    description: "Mia Nacamulli details the three types of bilingual brains and shows how knowing more than one language keeps your brain healthy, complex and actively engaged.",
+    topic: "Language Learning"
+  },
+  {
+    title: "The history of our world in 18 minutes",
+    channel: "TED",
+    url: "https://www.youtube.com/watch?v=yqc9zX04DXs",
+    description: "David Christian tells the history of the universe, from the Big Bang to the Internet, in a riveting 18 minutes.",
+    topic: "Big History"
+  },
+  {
+    title: "What is Consciousness?",
+    channel: "Kurzgesagt – In a Nutshell",
+    url: "https://www.youtube.com/watch?v=H6u0VBqNBQ8",
+    description: "The origin of consciousness is one of the greatest mysteries of the universe. What is it and why do we have it?",
+    topic: "Science"
+  }
+];
+
 export const generatePassageContent = async (config: GenerationConfig): Promise<Omit<Passage, 'id' | 'createdAt' | 'theme' | 'type'>> => {
   const topic = config.theme === 'Custom Topic' ? config.customTopic : config.theme;
   
@@ -89,7 +114,7 @@ export const generatePassageContent = async (config: GenerationConfig): Promise<
     2. Difficulty Level: ${config.difficulty}. ${complexity}
     3. Tone: Appropriate for the literature type and VCE standards.
     4. Vocabulary: Include a list of challenging vocabulary words (metalanguage or sophisticated terms). These words MUST be extracted EXACTLY as they appear in the text.
-    5. Comprehension: Generate 5 reading comprehension questions that test the student's understanding of the text. Include the answer and an explanation.
+    5. Comprehension: Generate 5 reading comprehension questions to test the student's understanding of the text. Include the answer and an explanation.
     6. Writing: Include a creative writing prompt and a high-quality sample response. The sample response MUST be structured as a formal VCE English essay:
        - Introduction
        - Body paragraphs following the TEEL structure (Topic sentence, Explanation, Evidence, Link)
@@ -197,9 +222,9 @@ export const generateCollectionPassage = async (words: string[]): Promise<string
 export const generateWorksheet = async (passageTopic: string, vocabWords: string[]): Promise<WorksheetData> => {
   const vocabList = vocabWords.length > 0 ? vocabWords.join(', ') : "sophisticated academic English vocabulary";
 
-  // We split this into two parallel requests for reliability:
-  // 1. Vocab generation (Uses JSON mode, highly structured)
-  // 2. Video search (Uses Tools, parsing text manually, with fallback)
+  // We split this into two parallel requests for reliability
+  // 1. Vocab generation (Uses JSON mode)
+  // 2. Video search (Uses Tools)
 
   // --- Step 1: Generate Vocabulary Exercises ---
   const vocabPrompt = `
@@ -219,34 +244,52 @@ export const generateWorksheet = async (passageTopic: string, vocabWords: string
   });
 
   // --- Step 2: Generate Video Activity ---
-  // We use site:youtube.com to help the grounding tool find specific video pages
+  // Strategy: Try to find a topic-specific video first. If that fails (due to lack of content or safety filters),
+  // the model is instructed to fall back to ANY high-quality educational video (e.g. from a major channel).
+  // This satisfies the "doesn't have to relate to the topic" constraint to ensure a valid result.
   const videoPrompt = `
-    Task: Find a specific, high-quality, educational YouTube video (MUST be between 5 to 15 minutes long) relevant to the topic: "${passageTopic}".
+    Task: Find a REAL, EXISTING, WATCHABLE YouTube video and generate assessment questions.
+    Target Topic: "${passageTopic}".
     
-    1. USE the googleSearch tool with the query: "site:youtube.com ${passageTopic} educational video duration 5-15 minutes".
-    2. Extract the EXACT Title of the first valid video result found.
-    3. Generate 5 Multiple Choice Questions (MCQ) about the general topic of the video.
-       - Provide 4 distinct options for each question.
-       - The 'answer' field MUST be the EXACT text string of the correct option from the 'options' array.
-    4. Generate 5 True/False questions about the general topic.
-       - The 'answer' field must be "True" or "False".
+    Constraints:
+    1. Video Length: MUST be between 5 to 15 minutes.
+    2. Video Content: Educational, Informational, or Interesting.
+    3. PRIORITY: Try to find a video about "${passageTopic}".
+    4. FALLBACK: If a good video for "${passageTopic}" is not found or is obscure, YOU MUST find a popular, high-quality "General Knowledge", "Science", or "History" video (e.g., from channels like TED-Ed, Vox, Veritasium, Kurzgesagt) instead. It is acceptable if it is not related to the topic, as long as it is a REAL video.
+    
+    REQUIREMENTS FOR QUESTIONS:
+    - Generate EXACTLY 5 Multiple Choice Questions (MCQs).
+    - Generate EXACTLY 5 True/False Questions.
+    - The questions must be relevant to the video content.
 
-    Output the result in this JSON format inside a code block:
+    ACTION:
+    USE the googleSearch tool. Search for: "site:youtube.com ${passageTopic} educational video 10 minutes". 
+    If you doubt the results, search for: "site:youtube.com interesting educational video 10 minutes".
+
+    Output JSON in a code block:
     \`\`\`json
     {
       "videoActivity": {
-        "title": "Video Title",
-        "url": "https://www.youtube.com/watch?v=...",
+        "title": "Exact Video Title",
+        "channel": "Channel Name (e.g. TED-Ed)",
+        "url": "https://www.youtube.com/watch?v=...", 
         "description": "Brief summary",
         "mcqs": [
-          { "question": "...", "options": ["Option A", "Option B", "Option C", "Option D"], "answer": "Option A" }
+          { "question": "...", "options": ["Option A", "Option B", "Option C", "Option D"], "answer": "Option A" },
+          // ... (Ensure exactly 5 MCQs)
         ],
         "trueFalse": [
-          { "question": "...", "answer": "True" }
+          { "question": "...", "answer": "True" },
+          // ... (Ensure exactly 5 True/False)
         ]
       }
     }
     \`\`\`
+    
+    CRITICAL: 
+    - The 'url' MUST be a real link found in the search results. DO NOT fabricate URLs.
+    - The 'answer' for MCQs MUST be the EXACT text string of one of the options.
+    - Ensure there are EXACTLY 5 MCQs and 5 True/False questions.
   `;
 
   const videoRequest = ai.models.generateContent({
@@ -271,7 +314,6 @@ export const generateWorksheet = async (passageTopic: string, vocabWords: string
     const groundingChunks = videoResponse.candidates?.[0]?.groundingMetadata?.groundingChunks;
     
     try {
-        // Attempt to extract JSON from tool response
         const jsonMatch = videoText.match(/```json\n([\s\S]*?)\n```/) || 
                           videoText.match(/```\n([\s\S]*?)\n```/) || 
                           videoText.match(/({[\s\S]*})/);
@@ -281,51 +323,75 @@ export const generateWorksheet = async (passageTopic: string, vocabWords: string
 
         if (!videoData.videoActivity) throw new Error("Invalid structure");
     } catch (parseError) {
-        console.warn("Primary video search failed or returned invalid JSON. Attempting fallback generation...", parseError);
+        // --- FALLBACK TO HARDCODED SAFE VIDEO ---
+        // If the LLM failed to parse or use the tool correctly, we resort to a guaranteed valid video.
+        // This ensures the user NEVER gets a broken worksheet.
+        console.warn("Primary video search failed. Using safe fallback.", parseError);
+        const randomVideo = FALLBACK_VIDEOS[Math.floor(Math.random() * FALLBACK_VIDEOS.length)];
         
-        // Fallback: Generate generic video activity if tool use fails
+        // We still need questions, so we ask Gemini to generate questions for this specific fallback video
         const fallbackPrompt = `
-            Create a generic educational video activity worksheet for the topic "${passageTopic}".
-            Since we cannot find a specific video right now, invent a generic title like "Introduction to ${passageTopic}".
-            
-            Generate:
-            1. A generic Title.
-            2. A generic Description.
-            3. 5 Multiple Choice Questions (MCQ) about the general concepts of ${passageTopic}.
-               - Provide 4 options per question.
-               - IMPORTANT: The 'answer' must be the EXACT string of one of the options.
-            4. 5 True/False questions about ${passageTopic}.
+            Generate worksheet questions for this video:
+            Title: "${randomVideo.title}"
+            Description: "${randomVideo.description}"
+            Topic: "${randomVideo.topic}"
 
-            Output JSON matching this schema:
+            Generate:
+            1. 5 Multiple Choice Questions (MCQ). 'answer' must be the exact option text.
+            2. 5 True/False questions.
+
+            Output JSON:
             {
-              "videoActivity": {
-                "title": "Introduction to ${passageTopic}",
-                "url": "https://www.youtube.com/results?search_query=${encodeURIComponent(passageTopic)}",
-                "description": "A comprehensive educational video covering key concepts of ${passageTopic}.",
                 "mcqs": [{ "question": "...", "options": ["..."], "answer": "..." }],
                 "trueFalse": [{ "question": "...", "answer": "True" }]
-              }
             }
         `;
 
-        const fallbackResponse = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: fallbackPrompt,
-            config: { responseMimeType: "application/json" }
+        const qResponse = await ai.models.generateContent({
+             model: 'gemini-2.5-flash',
+             contents: fallbackPrompt,
+             config: { responseMimeType: "application/json" }
         });
-        
-        videoData = JSON.parse(fallbackResponse.text || "{}");
+        const qData = JSON.parse(qResponse.text || "{}");
+
+        videoData = {
+            videoActivity: {
+                title: randomVideo.title,
+                channel: randomVideo.channel,
+                url: randomVideo.url,
+                description: randomVideo.description,
+                mcqs: qData.mcqs || [],
+                trueFalse: qData.trueFalse || []
+            }
+        };
     }
 
-    // Extract verified URL from Grounding Metadata (only if available and matched)
+    // --- Double Check URL against Grounding ---
+    // If we successfully parsed the AI response, we still prefer the grounding metadata URL if available
+    // to ensure it's a real click.
     let verifiedUrl = videoData.videoActivity.url;
     let verifiedTitle = videoData.videoActivity.title;
+    // Attempt to trust the AI's channel extraction, but default to 'YouTube' if missing
+    let verifiedChannel = videoData.videoActivity.channel || "YouTube"; 
 
+    // Only override if we have high-confidence grounding matches
     if (groundingChunks) {
       for (const chunk of groundingChunks) {
         if (chunk.web?.title && (chunk.web.uri?.includes('youtube.com') || chunk.web.uri?.includes('youtu.be'))) {
-           verifiedTitle = chunk.web.title;
-           verifiedUrl = chunk.web.uri; 
+           // Often titles are "Video Name - Channel - YouTube"
+           const fullTitle = chunk.web.title;
+           verifiedUrl = chunk.web.uri;
+           
+           // Simple heuristic to clean title if the AI didn't do it
+           if (!videoData.videoActivity.channel) {
+               const parts = fullTitle.split(' - ');
+               if (parts.length >= 2) {
+                   verifiedTitle = parts[0];
+                   verifiedChannel = parts[1]; // Likely the channel
+               } else {
+                   verifiedTitle = fullTitle.replace(' - YouTube', '');
+               }
+           }
            break;
         }
       }
@@ -340,6 +406,7 @@ export const generateWorksheet = async (passageTopic: string, vocabWords: string
         ...videoData.videoActivity,
         url: verifiedUrl,
         title: verifiedTitle,
+        channel: verifiedChannel,
         mcqs: videoData.videoActivity.mcqs.map((q: any) => ({ ...q, id: crypto.randomUUID(), type: 'MCQ' })),
         trueFalse: videoData.videoActivity.trueFalse.map((q: any) => ({ ...q, id: crypto.randomUUID(), type: 'TF' }))
       }

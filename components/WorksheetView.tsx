@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Passage, WorksheetData, SavedWord } from '../types';
 import { Button } from './Button';
-import { ArrowLeft, Printer, Eye, EyeOff, Video, Youtube, FileText, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Printer, Eye, EyeOff, Video, Youtube, FileText, CheckCircle2, ExternalLink } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 interface WorksheetViewProps {
@@ -182,9 +182,23 @@ export const WorksheetView: React.FC<WorksheetViewProps> = ({ passage, worksheet
                <Youtube className="w-8 h-8 text-red-600" />
              </div>
              <div>
-               <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block print:text-black">Video Assignment</span>
-               <h3 className="font-bold text-lg text-slate-900 mb-2 print:text-black leading-tight">
-                 {worksheetData.videoActivity.title}
+               <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block print:text-black">
+                 Video Assignment {worksheetData.videoActivity.channel ? `• ${worksheetData.videoActivity.channel}` : ''}
+               </span>
+               <h3 className="font-bold text-lg text-slate-900 mb-2 print:text-black leading-tight group">
+                 {viewMode === 'teacher' ? (
+                   <a 
+                     href={worksheetData.videoActivity.url} 
+                     target="_blank" 
+                     rel="noopener noreferrer" 
+                     className="hover:text-indigo-700 hover:underline flex items-center gap-2"
+                   >
+                     {worksheetData.videoActivity.title}
+                     <ExternalLink className="w-4 h-4 text-slate-400" />
+                   </a>
+                 ) : (
+                   <span>{worksheetData.videoActivity.title}</span>
+                 )}
                </h3>
                <p className="text-sm text-slate-600 italic print:text-black">
                  {worksheetData.videoActivity.description}

@@ -82,6 +82,7 @@ export interface VideoQuestion {
 
 export interface VideoActivity {
   title: string;
+  channel: string;
   url: string;
   description: string;
   mcqs: VideoQuestion[];
