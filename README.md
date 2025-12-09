@@ -1,20 +1,52 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# LinguaLift - AI VCE English Assistant
 
-# Run and deploy your AI Studio app
+LinguaLift is a comprehensive, AI-powered educational platform designed to assist VCE (Victorian Certificate of Education) English students and teachers. It generates tailored reading passages, vocabulary exercises, and multimedia worksheets using Google's Gemini API.
 
-This contains everything you need to run your app locally.
+## 🌟 Key Features
 
-View your app in AI Studio: https://ai.studio/apps/drive/1iNmtJ-k-V-uyKg3JV3gO7nZP-nn6WpWU
+### 1. 📚 AI Passage Generation
+- **Customizable Content**: Generate unique text based on themes (Science, History, Society, etc.) or custom topics.
+- **VCE Standards**: Supports distinct difficulty levels:
+  - **Easy (Unit 1/2)**: Foundational skills and standard academic vocabulary.
+  - **Medium (Unit 3/4)**: Sophisticated vocabulary, complex sentence structures, and high-level analysis.
+- **Diverse Formats**: Creates Essays, Short Stories, News Articles, Opinion Pieces, Biographies, and Poems.
+- **Comprehensive Analysis**: Every passage automatically includes:
+  - 5-8 Key Vocabulary words with definitions.
+  - 5 Reading Comprehension questions with explanations.
+  - A Creative Writing Prompt.
+  - A full "Band 6" Sample Essay Response (TEEL structure).
 
-## Run Locally
+### 2. 🧠 Interactive Vocabulary Builder
+- **Contextual Lookup**: Click any word in the generated text to get an instant, AI-generated definition.
+- **Smart Collection**: Select text to save it to your personal vocabulary bank with synonyms and usage examples.
+- **Pronunciation**: Built-in Text-to-Speech for learning correct pronunciation.
+- **Practice Generation**: Automatically generates new short stories that incorporate your saved words to reinforce learning.
 
-**Prerequisites:**  Node.js
+### 3. 📄 Dynamic Worksheet Generator
+Transform any generated topic into a complete, printable PDF lesson plan.
+- **Dual Modes**: 
+  - **Student View**: Clean layout with writing lines and hidden answers.
+  - **Teacher Key**: Full answer keys for all questions.
+- **Multimedia Integration**: Uses Google Search Grounding to find real, relevant educational YouTube videos (5-15 mins) and generates:
+  - 5 Multiple Choice Questions.
+  - 5 True/False Questions.
+- **Vocabulary Cloze**: Auto-generates "fill-in-the-blank" exercises using the passage's vocabulary.
+- **Print Optimization**: Custom CSS specifically tuned for perfect A4/Letter printing without browser clutter.
 
+### 4. 🔒 Secure Access
+- Simple authentication gateway to restrict access to authorized educators/students.
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## 🛠️ Tech Stack
+- **Frontend**: React 19, TypeScript
+- **AI**: Google Gemini API (`gemini-2.5-flash`) via `@google/genai` SDK
+- **Styling**: Tailwind CSS
+- **Tools**: Google Search Tool (for video discovery)
+
+## 🚀 Usage
+
+1. **Log In**:
+   - Username: `shiro1729`
+   - Password: `abc123`
+2. **Generate**: Select a theme and difficulty to create a passage.
+3. **Explore**: Read the passage, click words to define them, or save them to your collection.
+4. **Export**: Click "Create Worksheet" to generate a printable PDF with additional video and vocabulary exercises.
