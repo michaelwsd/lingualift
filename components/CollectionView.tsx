@@ -1,10 +1,11 @@
+'use client';
 
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { SavedWord } from '../types';
+import { SavedWord } from '@/types';
 import { Download, Trash2, ArrowLeft, BookMarked, Sparkles } from 'lucide-react';
-import { Button } from './Button';
-import { generateCollectionPassage } from '../services/gemini';
+import { Button } from '@/components/Button';
+import { generateCollectionPassage } from '@/services/api';
 
 interface CollectionViewProps {
   collection: SavedWord[];
@@ -104,7 +105,7 @@ export const CollectionView: React.FC<CollectionViewProps> = ({ collection, onBa
                 key={item.id} 
                 className="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden flex flex-col print:border-stone-300 print:shadow-none print:break-inside-avoid"
                 >
-                <div className="p-6 flex-grow">
+                <div className="p-6 grow">
                     <div className="flex justify-between items-start mb-4">
                     <div>
                         <h3 className="text-xl font-serif font-bold text-indigo-900 mb-1 capitalize">

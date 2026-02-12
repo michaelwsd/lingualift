@@ -1,6 +1,7 @@
+'use client';
 
 import React from 'react';
-import { VocabularyWord } from '../types';
+import { VocabularyWord } from '@/types';
 import { Volume2 } from 'lucide-react';
 
 interface VocabCardProps {

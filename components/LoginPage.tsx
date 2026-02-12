@@ -1,6 +1,7 @@
+'use client';
 
 import React, { useState } from 'react';
-import { Button } from './Button';
+import { Button } from '@/components/Button';
 import { Library, Lock, User, AlertCircle } from 'lucide-react';
 
 interface LoginPageProps {

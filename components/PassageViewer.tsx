@@ -1,12 +1,13 @@
+'use client';
 
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Passage, VocabularyWord, Question, SavedWord, WorksheetData } from '../types';
-import { VocabCard } from './VocabCard';
+import { Passage, VocabularyWord, Question, SavedWord, WorksheetData } from '@/types';
+import { VocabCard } from '@/components/VocabCard';
 import { BookOpen, RefreshCw, X, Loader2, HelpCircle, ChevronDown, Download, CheckCircle2, Lightbulb, PenTool, FileText, ChevronRight, Plus, Bookmark, FileSpreadsheet } from 'lucide-react';
-import { Button } from './Button';
-import { VocabHighlight } from './VocabHighlight';
-import { getWordDefinition, generateWordDetails, generateWorksheet } from '../services/gemini';
+import { Button } from '@/components/Button';
+import { VocabHighlight } from '@/components/VocabHighlight';
+import { getWordDefinition, generateWordDetails, generateWorksheet } from '@/services/api';
 
 interface PassageViewerProps {
   passage: Passage;
@@ -38,22 +39,22 @@ const QuestionItem: React.FC<{ question: Question; index: number }> = ({ questio
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-start text-left p-5 gap-4 hover:bg-stone-50 transition-colors print:hidden outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500/50"
       >
-        <span className={`flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-full text-sm font-bold transition-all duration-300 ${isOpen ? 'bg-indigo-600 text-white shadow-md' : 'bg-indigo-50 text-indigo-700 group-hover:bg-indigo-100'}`}>
+        <span className={`shrink-0 flex items-center justify-center w-7 h-7 rounded-full text-sm font-bold transition-all duration-300 ${isOpen ? 'bg-indigo-600 text-white shadow-md' : 'bg-indigo-50 text-indigo-700 group-hover:bg-indigo-100'}`}>
           {index + 1}
         </span>
-        <div className="flex-grow pt-0.5">
+        <div className="grow pt-0.5">
           <h4 className={`text-base font-medium leading-relaxed transition-colors ${isOpen ? 'text-indigo-900' : 'text-slate-800'}`}>
             {question.question}
           </h4>
         </div>
-        <div className={`flex-shrink-0 text-slate-400 pt-1 transition-transform duration-300 ${isOpen ? 'rotate-180 text-indigo-500' : ''}`}>
+        <div className={`shrink-0 text-slate-400 pt-1 transition-transform duration-300 ${isOpen ? 'rotate-180 text-indigo-500' : ''}`}>
            <ChevronDown className="w-5 h-5" />
         </div>
       </button>
       
       {/* Print View: Always show questions expanded */}
       <div className="hidden print:flex p-4 gap-4 items-start">
-         <span className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-stone-100 text-stone-900 border border-stone-300 text-xs font-bold">
+         <span className="shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-stone-100 text-stone-900 border border-stone-300 text-xs font-bold">
           {index + 1}
         </span>
         <h4 className="text-sm font-medium text-slate-900 leading-relaxed">{question.question}</h4>
@@ -350,7 +351,7 @@ export const PassageViewer: React.FC<PassageViewerProps> = ({
             ref={containerRef}
           >
             <div className="bg-slate-900 text-white p-4 rounded-xl shadow-2xl border border-slate-700 relative">
-              <div className="absolute bottom-[-8px] left-1/2 -translate-x-1/2 w-4 h-4 bg-slate-900 border-r border-b border-slate-700 transform rotate-45"></div>
+              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-slate-900 border-r border-b border-slate-700 transform rotate-45"></div>
               
               <div className="flex justify-between items-start gap-2 mb-2">
                  <h4 className="font-bold text-lg capitalize text-yellow-400">{activeDef.word}</h4>
@@ -380,7 +381,7 @@ export const PassageViewer: React.FC<PassageViewerProps> = ({
                 ref={selectionRef}
             >
                 <div className="bg-white rounded-lg shadow-xl border border-stone-200 p-2 flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-600 px-2 max-w-[150px] truncate border-r border-stone-200">
+                    <span className="text-xs font-bold text-slate-600 px-2 max-w-37.5 truncate border-r border-stone-200">
                         {selection.text}
                     </span>
                     <Button 
@@ -392,13 +393,13 @@ export const PassageViewer: React.FC<PassageViewerProps> = ({
                         {isAddingToCollection ? 'Adding...' : 'Collection'}
                     </Button>
                 </div>
-                <div className="absolute bottom-[-6px] left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-r border-b border-stone-200 transform rotate-45"></div>
+                <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-r border-b border-stone-200 transform rotate-45"></div>
             </div>
         )}
 
         {/* Main Passage Column */}
         <div className="xl:col-span-8 space-y-8 print:w-full print:mb-8">
-          <div className="bg-[#fdfbf7] rounded-sm shadow-sm border border-stone-200 p-8 lg:p-16 relative overflow-hidden min-h-[600px] print:min-h-0 print:shadow-none print:border print:border-stone-300 print:break-after-page">
+          <div className="bg-[#fdfbf7] rounded-sm shadow-sm border border-stone-200 p-8 lg:p-16 relative overflow-hidden min-h-150 print:min-h-0 print:shadow-none print:border print:border-stone-300 print:break-after-page">
              <div className="absolute top-0 left-0 right-0 h-1 bg-indigo-900/10 print:hidden"></div>
              <div className="absolute bottom-0 left-0 right-0 h-1 bg-indigo-900/10 print:hidden"></div>
              

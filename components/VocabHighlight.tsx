@@ -1,6 +1,7 @@
+'use client';
 
 import React from 'react';
-import { VocabularyWord } from '../types';
+import { VocabularyWord } from '@/types';
 import { Volume2 } from 'lucide-react';
 
 interface VocabHighlightProps {
@@ -24,7 +25,7 @@ export const VocabHighlight: React.FC<VocabHighlightProps> = ({ word, children }
       onClick={(e) => e.stopPropagation()} 
     >
       {/* The Highlighted Text - Purely visual underline, no anchor tag */}
-      <span className="underline decoration-2 underline-offset-4 decoration-indigo-300 text-slate-900 transition-all duration-300 group-hover:decoration-indigo-600 group-hover:text-indigo-900 decoration-clone">
+      <span className="underline decoration-2 underline-offset-4 decoration-indigo-300 text-slate-900 transition-all duration-300 group-hover:decoration-indigo-600 group-hover:text-indigo-900 box-decoration-clone">
         {children}
       </span>
 
@@ -33,7 +34,7 @@ export const VocabHighlight: React.FC<VocabHighlightProps> = ({ word, children }
         <div className="bg-slate-900 text-white p-4 rounded-xl shadow-xl border border-slate-700 text-left relative">
           
           {/* Arrow */}
-          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] border-4 border-transparent border-t-slate-900"></div>
+          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-4 border-transparent border-t-slate-900"></div>
 
           <div className="flex items-start justify-between gap-3 mb-2">
             <h4 className="font-bold text-lg capitalize text-indigo-200 font-serif">{word.word}</h4>

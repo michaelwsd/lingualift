@@ -1,8 +1,9 @@
+'use client';
 
 import React, { useState } from 'react';
-import { THEMES, LITERATURE_TYPES } from '../constants';
-import { GenerationConfig, Theme, LiteratureType, Difficulty } from '../types';
-import { Button } from './Button';
+import { THEMES, LITERATURE_TYPES } from '@/constants';
+import { GenerationConfig, Theme, LiteratureType, Difficulty } from '@/types';
+import { Button } from '@/components/Button';
 import { Sparkles, GraduationCap, Search, Gauge } from 'lucide-react';
 
 interface GeneratorFormProps {

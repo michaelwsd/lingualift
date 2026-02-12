@@ -1,7 +1,8 @@
+'use client';
 
 import React, { useState } from 'react';
-import { Passage, WorksheetData, SavedWord } from '../types';
-import { Button } from './Button';
+import { Passage, WorksheetData, SavedWord } from '@/types';
+import { Button } from '@/components/Button';
 import { ArrowLeft, Printer, Eye, EyeOff, Video, Youtube, FileText, CheckCircle2, ExternalLink } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
@@ -256,7 +257,7 @@ export const WorksheetView: React.FC<WorksheetViewProps> = ({ passage, worksheet
                  <div key={n} className="flex gap-4 mb-4 items-end">
                    <span className="font-bold text-sm w-6">{n}.</span>
                    <div className="flex-1 border-b border-slate-300 border-dashed pb-1 text-sm text-slate-400">Word</div>
-                   <div className="flex-[3] border-b border-slate-300 border-dashed pb-1 text-sm text-slate-400">Meaning</div>
+                   <div className="flex-3 border-b border-slate-300 border-dashed pb-1 text-sm text-slate-400">Meaning</div>
                  </div>
               ))}
             </div>
