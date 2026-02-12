@@ -1,9 +1,0 @@
-{
-  "/_not-found/page": "/_not-found",
-  "/api/collection-passage/route": "/api/collection-passage",
-  "/api/generate-passage/route": "/api/generate-passage",
-  "/api/generate-worksheet/route": "/api/generate-worksheet",
-  "/api/word-definition/route": "/api/word-definition",
-  "/api/word-details/route": "/api/word-details",
-  "/page": "/"
-}
