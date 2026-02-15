@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
-import { GenerationConfig, Passage, SynonymGroup } from "@/types";
+import { GenerationConfig, Passage, SynonymGroup, CollectedWord, MCDefinitionQuestion, MCSynonymQuestion } from "@/types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
@@ -314,4 +314,238 @@ Requirements:
 
   const data = JSON.parse(text);
   return data.groups;
+};
+
+// --- Homework-specific generation functions ---
+
+const MC_DEFINITIONS_SCHEMA: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    questions: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          word: { type: Type.STRING, description: "The vocabulary word" },
+          correctDefinition: { type: Type.STRING, description: "The correct definition of the word" },
+          distractors: {
+            type: Type.ARRAY,
+            items: { type: Type.STRING },
+            description: "Exactly 4 plausible but INCORRECT definitions"
+          }
+        },
+        required: ["word", "correctDefinition", "distractors"]
+      }
+    }
+  },
+  required: ["questions"]
+};
+
+const MC_SYNONYMS_SCHEMA: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    questions: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          word: { type: Type.STRING, description: "The vocabulary word" },
+          correctSynonym: { type: Type.STRING, description: "A correct synonym for the word" },
+          distractors: {
+            type: Type.ARRAY,
+            items: { type: Type.STRING },
+            description: "Exactly 4 real English words that are NOT synonyms of the target word"
+          }
+        },
+        required: ["word", "correctSynonym", "distractors"]
+      }
+    }
+  },
+  required: ["questions"]
+};
+
+const HOMEWORK_SYNONYM_GROUPS_SCHEMA: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    groups: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          word: { type: Type.STRING, description: "The original vocabulary word" },
+          synonyms: {
+            type: Type.ARRAY,
+            items: { type: Type.STRING },
+            description: "3-5 simple synonyms or short phrases with the same meaning. Each must be simple enough for EAL students."
+          }
+        },
+        required: ["word", "synonyms"]
+      }
+    }
+  },
+  required: ["groups"]
+};
+
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+export const generateMCDefinitions = async (words: CollectedWord[]): Promise<MCDefinitionQuestion[]> => {
+  const wordList = words.map((w, i) => `${i + 1}. Word: "${w.word}" — Correct definition: "${w.meaning}"`).join('\n');
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: `Generate multiple-choice definition questions for the following vocabulary words.
+
+For EACH word, I am providing the correct definition. You must generate exactly 4 DISTRACTOR definitions that are:
+- Plausible and similar in style/length to the correct definition
+- Clearly WRONG (not partial matches or near-synonyms of the correct meaning)
+- Related to the general domain but describing a different concept
+- Simple enough for EAL students to understand
+
+Words and their correct definitions:
+${wordList}
+
+IMPORTANT:
+- Generate exactly 4 distractors per word
+- The distractors must NOT be correct or partially correct definitions of the target word
+- Each distractor should be a complete, grammatically correct definition
+- Distractors should be distinct from each other`,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: MC_DEFINITIONS_SCHEMA,
+      systemInstruction: "You are a VCE EAL teacher creating vocabulary assessment exercises. Generate plausible but clearly incorrect distractor definitions.",
+    },
+  });
+
+  const text = response.text;
+  if (!text) throw new Error("No MC definitions generated");
+
+  const data = JSON.parse(text);
+  return data.questions.map((q: any, i: number) => ({
+    wordId: words[i].id,
+    word: words[i].word,
+    correctDefinition: words[i].meaning,
+    options: shuffle([words[i].meaning, ...q.distractors.slice(0, 4)]),
+  }));
+};
+
+export const generateMCSynonyms = async (words: CollectedWord[]): Promise<MCSynonymQuestion[]> => {
+  const wordList = words.map((w, i) => `${i + 1}. "${w.word}" (meaning: ${w.meaning})`).join('\n');
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: `Generate multiple-choice synonym questions for the following vocabulary words.
+
+For EACH word, generate:
+- 1 correct synonym (a word or short phrase that means the same thing)
+- 4 distractor words that are real English words but are NOT synonyms of the target word
+
+Words:
+${wordList}
+
+IMPORTANT:
+- The correct synonym must clearly mean the same thing as the target word
+- Distractors must be real, common English words that an EAL student would recognize
+- Distractors should NOT be synonyms or near-synonyms of the target word
+- All 5 options (1 correct + 4 distractors) should be similar in complexity
+- Do not reuse any word across different questions' options`,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: MC_SYNONYMS_SCHEMA,
+      systemInstruction: "You are a VCE EAL teacher creating vocabulary synonym exercises. Generate clear, unambiguous synonym questions.",
+    },
+  });
+
+  const text = response.text;
+  if (!text) throw new Error("No MC synonyms generated");
+
+  const data = JSON.parse(text);
+  return data.questions.map((q: any, i: number) => ({
+    wordId: words[i].id,
+    word: words[i].word,
+    correctSynonym: q.correctSynonym,
+    options: shuffle([q.correctSynonym, ...q.distractors.slice(0, 4)]),
+  }));
+};
+
+export const generateHomeworkSynonyms = async (words: string[]): Promise<SynonymGroup[]> => {
+  if (words.length === 0) {
+    throw new Error("At least one word is required to generate synonyms");
+  }
+
+  const wordList = words.map((w, i) => `${i + 1}. "${w}"`).join('\n');
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: `Generate 3-5 simple synonyms for each of the following vocabulary words:
+
+${wordList}
+
+Requirements:
+1. Each synonym must be a DIFFERENT word or very short phrase (2-3 words max) that means the same thing.
+2. Generate between 3 and 5 synonyms per word.
+3. Synonyms should be simple and accessible for EAL students (ages 16-18, intermediate English).
+4. Do NOT repeat any synonym across different words — each synonym must be unique to its word.
+5. Do NOT use the original word itself as a synonym.
+6. Prefer common, everyday words that students would already know.
+7. The synonyms should be clearly associated with ONLY their target word, not ambiguous between multiple words in the list.`,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: HOMEWORK_SYNONYM_GROUPS_SCHEMA,
+      systemInstruction: "You are a VCE EAL teacher helping students learn vocabulary through synonym exercises. Generate clear, unambiguous synonyms. Provide 3-5 synonyms per word.",
+    },
+  });
+
+  const text = response.text;
+  if (!text) throw new Error("No homework synonyms generated");
+
+  const data = JSON.parse(text);
+  return data.groups;
+};
+
+export const generateHomeworkFillInBlank = async (words: string[]): Promise<{ passage: string; answers: string[] }> => {
+  if (words.length === 0) {
+    throw new Error("At least one word is required");
+  }
+
+  const blankWords = words.length <= 10 ? words : words.slice(0, 10);
+  const wordList = blankWords.map((w, i) => `${i}. "${w}"`).join('\n');
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: `Create a fill-in-the-blank exercise using ALL of the following vocabulary words:
+
+${wordList}
+
+Requirements:
+1. Write a coherent, engaging passage of approximately 150 words.
+2. The passage MUST be suitable for EAL (English as Additional Language) students — use simple sentence structures and clear context.
+3. Use ALL ${blankWords.length} words naturally in the passage. Each word must appear EXACTLY ONCE — no duplicates.
+4. Replace each word with a marker: __BLANK_0__ for word 0, __BLANK_1__ for word 1, etc.
+5. The words should be spread evenly throughout the passage, NOT clustered together.
+6. The passage should provide strong context clues for each blank so students can identify which word fits.
+7. The 'answers' array must contain the words in order: answers[0] = word for __BLANK_0__, etc.
+8. Make the passage interesting and relatable for young people aged 15-18.
+9. Do NOT use any of the vocabulary words elsewhere in the passage (only in their blank positions).`,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: FILL_IN_BLANK_SCHEMA,
+      systemInstruction: "You are a VCE EAL teacher creating vocabulary exercises. Write clear, engaging, EAL-appropriate passages that help students practice using new words in context.",
+    },
+  });
+
+  const text = response.text;
+  if (!text) throw new Error("No homework fill-in-blank generated");
+
+  const data = JSON.parse(text);
+  return {
+    passage: data.passage,
+    answers: data.answers,
+  };
 };

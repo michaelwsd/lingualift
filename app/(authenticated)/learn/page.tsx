@@ -7,7 +7,7 @@ import { StageIndicator } from '@/components/learning/StageIndicator';
 import { PassageStage } from '@/components/learning/PassageStage';
 import { ComprehensionStage } from '@/components/learning/ComprehensionStage';
 import { PracticeStage } from '@/components/learning/PracticeStage';
-import { SavedSession, Passage, CollectedWord, FillInBlankExercise, SynonymExercise } from '@/types';
+import { SavedSession, Passage, CollectedWord } from '@/types';
 import { ChevronLeft, ChevronRight, RotateCcw, BookOpen, Brain, Puzzle, Save, Check, LogOut, GraduationCap } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
@@ -215,8 +215,6 @@ export default function LearnPage() {
         <HomeworkModal
           passage={passage}
           collectedWords={collectedWords}
-          fillInBlankExercise={fillInBlankExercise}
-          synonymExercise={synonymExercise}
           onClose={() => setShowHomeworkModal(false)}
         />,
         document.body
@@ -225,35 +223,22 @@ export default function LearnPage() {
   );
 }
 
-const HOMEWORK_KEY = 'lingualift-homework';
-
-interface HomeworkAssignment {
-  id: string;
-  studentName: string;
-  assignedAt: number;
-  passage: Passage;
-  collectedWords: CollectedWord[];
-  fillInBlankExercise: FillInBlankExercise | null;
-  synonymExercise: SynonymExercise | null;
-}
-
 function HomeworkModal({
   passage,
   collectedWords,
-  fillInBlankExercise,
-  synonymExercise,
   onClose,
 }: {
   passage: Passage;
   collectedWords: CollectedWord[];
-  fillInBlankExercise: FillInBlankExercise | null;
-  synonymExercise: SynonymExercise | null;
   onClose: () => void;
 }) {
   const [students, setStudents] = useState<{ id: string; name: string }[]>([]);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedName, setSelectedName] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -275,36 +260,44 @@ function HomeworkModal({
       .finally(() => setLoading(false));
   }, []);
 
-  const handleSend = () => {
-    if (!selected) return;
+  const handleSend = async () => {
+    if (!selectedId || !selectedName) return;
+    setSending(true);
+    setError(null);
 
-    const assignment: HomeworkAssignment = {
-      id: crypto.randomUUID(),
-      studentName: selected,
-      assignedAt: Date.now(),
-      passage,
-      collectedWords,
-      fillInBlankExercise,
-      synonymExercise,
-    };
+    try {
+      const res = await fetch('/api/homework/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentId: selectedId,
+          studentName: selectedName,
+          passage,
+          collectedWords,
+        }),
+      });
 
-    const existing = JSON.parse(localStorage.getItem(HOMEWORK_KEY) || '[]') as HomeworkAssignment[];
-    existing.unshift(assignment);
-    localStorage.setItem(HOMEWORK_KEY, JSON.stringify(existing));
-
-    setSent(true);
-    setTimeout(onClose, 1200);
+      if (!res.ok) throw new Error('Failed to send');
+      setSent(true);
+      setTimeout(onClose, 1200);
+    } catch {
+      setError('Failed to send homework. Please try again.');
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
     <div className="fixed inset-0 z-100 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-2xl border border-stone-200/60 w-full max-w-md mx-4 overflow-hidden">
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={sending ? undefined : onClose} />
+      <div className="relative bg-white rounded-2xl shadow-2xl border border-stone-200/60 w-full max-w-md mx-4">
         <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100">
           <h2 className="text-lg font-semibold text-slate-900">Prepare Homework</h2>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-stone-100 transition-colors">
-            <svg className="w-4 h-4 text-stone-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
+          {!sending && (
+            <button onClick={onClose} className="p-1 rounded-lg hover:bg-stone-100 transition-colors">
+              <svg className="w-4 h-4 text-stone-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          )}
         </div>
 
         {sent ? (
@@ -312,7 +305,13 @@ function HomeworkModal({
             <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
               <Check className="w-6 h-6 text-green-600" />
             </div>
-            <p className="text-sm font-medium text-slate-900">Homework sent to {selected}!</p>
+            <p className="text-sm font-medium text-slate-900">Homework sent to {selectedName}!</p>
+          </div>
+        ) : sending ? (
+          <div className="px-5 py-8 text-center">
+            <div className="w-8 h-8 border-3 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-sm font-medium text-slate-900 mb-1">Preparing exercises...</p>
+            <p className="text-xs text-stone-400">Generating practice questions for {selectedName}. This may take a moment.</p>
           </div>
         ) : (
           <div className="px-5 py-4 space-y-4">
@@ -321,6 +320,12 @@ function HomeworkModal({
                 Send <span className="font-medium text-slate-700">&ldquo;{passage.title}&rdquo;</span> as homework
               </p>
             </div>
+
+            {error && (
+              <div className="px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600">
+                {error}
+              </div>
+            )}
 
             <div ref={dropdownRef}>
               <label className="block text-sm font-medium text-slate-700 mb-1">Select student</label>
@@ -334,10 +339,10 @@ function HomeworkModal({
                       : 'border-stone-300 hover:border-stone-400'
                   }`}
                 >
-                  {selected ? (
+                  {selectedName ? (
                     <span className="flex items-center gap-2 text-slate-900">
                       <GraduationCap className="w-4 h-4 text-indigo-500" />
-                      {selected}
+                      {selectedName}
                     </span>
                   ) : (
                     <span className="text-stone-400">Choose a student...</span>
@@ -361,20 +366,20 @@ function HomeworkModal({
                         <button
                           key={s.id}
                           type="button"
-                          onClick={() => { setSelected(s.name); setDropdownOpen(false); }}
+                          onClick={() => { setSelectedId(s.id); setSelectedName(s.name); setDropdownOpen(false); }}
                           className={`w-full px-3 py-2 flex items-center gap-2.5 text-sm transition-colors duration-100 ${
-                            selected === s.name
+                            selectedId === s.id
                               ? 'bg-indigo-50 text-indigo-900 font-medium'
                               : 'text-slate-700 hover:bg-stone-50'
                           }`}
                         >
                           <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold ${
-                            selected === s.name ? 'bg-indigo-100 text-indigo-700' : 'bg-stone-100 text-stone-500'
+                            selectedId === s.id ? 'bg-indigo-100 text-indigo-700' : 'bg-stone-100 text-stone-500'
                           }`}>
                             {s.name.charAt(0).toUpperCase()}
                           </div>
                           {s.name}
-                          {selected === s.name && (
+                          {selectedId === s.id && (
                             <Check className="w-3.5 h-3.5 ml-auto text-indigo-500" />
                           )}
                         </button>
@@ -387,7 +392,7 @@ function HomeworkModal({
 
             <button
               onClick={handleSend}
-              disabled={!selected}
+              disabled={!selectedId}
               className="w-full py-2.5 bg-[#1e1b4b] hover:bg-indigo-800 disabled:bg-stone-300 disabled:cursor-not-allowed text-white text-sm font-medium rounded-xl shadow-md transition-all duration-200"
             >
               Send Homework

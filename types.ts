@@ -58,3 +58,102 @@ export interface SavedSession {
   fillInBlankExercise: FillInBlankExercise | null;
   synonymExercise: SynonymExercise | null;
 }
+
+// --- Homework Types ---
+
+export interface MCDefinitionQuestion {
+  wordId: string;
+  word: string;
+  correctDefinition: string;
+  options: string[];
+}
+
+export interface MCSynonymQuestion {
+  wordId: string;
+  word: string;
+  correctSynonym: string;
+  options: string[];
+}
+
+export interface CrossMatchingData {
+  words: { id: string; text: string }[];
+  definitions: { id: string; text: string }[];
+}
+
+export type HomeworkPhase = 'vocab_review' | 'practice' | 'completed';
+
+export type PracticeQuestionType =
+  | 'mc_definition'
+  | 'mc_synonym'
+  | 'matching'
+  | 'fill_in_blank'
+  | 'grouping';
+
+export interface PracticeQuestion {
+  id: string;
+  wordId: string;
+  type: PracticeQuestionType;
+  prompt: string;
+  options: string[];
+  correctAnswer: string;
+}
+
+export interface PassageFillExercise {
+  id: string;
+  wordIds: string[];
+  passage: string;
+  answers: string[];
+  wordBank: string[];
+}
+
+export interface WordMatchingExercise {
+  id: string;
+  wordIds: string[];
+  words: { id: string; text: string }[];
+  definitions: { id: string; text: string }[];
+}
+
+export interface SynonymBasketExercise {
+  id: string;
+  wordIds: string[];
+  baskets: { id: string; word: string }[];
+  synonymPool: { key: string; text: string; correctBasketId: string }[];
+}
+
+export interface PracticeSessionState {
+  allQuestions: PracticeQuestion[];
+  passageFills: PassageFillExercise[];
+  matchingExercises: WordMatchingExercise[];
+  basketExercises: SynonymBasketExercise[];
+  queue: string[];
+  currentQueueIndex: number;
+  score: number;
+  answeredCorrectly: string[];
+  answeredIncorrectly: string[];
+}
+
+export interface HomeworkAssignment {
+  id: string;
+  teacher_id: string;
+  student_id: string;
+  student_name: string;
+  assigned_at: string;
+  status: 'pending' | 'in_progress' | 'completed';
+  passage: Passage;
+  collected_words: CollectedWord[];
+  mc_definitions: MCDefinitionQuestion[];
+  mc_synonyms: MCSynonymQuestion[];
+  cross_matching_data: CrossMatchingData;
+  synonym_groups: SynonymExercise;
+}
+
+export interface HomeworkProgress {
+  id: string;
+  homework_id: string;
+  student_id: string;
+  current_phase: HomeworkPhase;
+  score: number;
+  exercises_completed: string[];
+  answers_given: Record<string, any>;
+  updated_at: string;
+}

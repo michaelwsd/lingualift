@@ -98,3 +98,44 @@ button, [role="button"] {
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
 }
+
+/* Score popup animations */
+@keyframes scorePopUp {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  50% { opacity: 0.8; transform: translateY(-20px) scale(1.1); }
+  100% { opacity: 0; transform: translateY(-40px) scale(0.9); }
+}
+.animate-score-pop {
+  animation: scorePopUp 0.8s ease-out forwards;
+  pointer-events: none;
+}
+
+/* Progress pulse */
+@keyframes progressPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+.animate-progress-pulse {
+  animation: progressPulse 0.4s ease-in-out;
+}
+
+/* Correct/incorrect flash */
+@keyframes correctFlash {
+  0% { background-color: #d1fae5; }
+  100% { background-color: transparent; }
+}
+@keyframes incorrectFlash {
+  0% { background-color: #fee2e2; }
+  100% { background-color: transparent; }
+}
+.animate-correct-flash { animation: correctFlash 0.6s ease-out; }
+.animate-incorrect-flash { animation: incorrectFlash 0.6s ease-out; }
+
+/* Celebration confetti */
+@keyframes bounceIn {
+  0% { opacity: 0; transform: scale(0.3); }
+  50% { opacity: 1; transform: scale(1.05); }
+  70% { transform: scale(0.9); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.animate-bounce-in { animation: bounceIn 0.6s ease-out both; }

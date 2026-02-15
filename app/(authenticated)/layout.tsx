@@ -2,15 +2,36 @@
 
 import { LinguaLiftProvider } from '@/contexts/LinguaLiftContext';
 import { ProfileDropdown } from '@/components/ProfileDropdown';
-import { Library, FolderOpen } from 'lucide-react';
+import { Library, FolderOpen, BookOpen, GraduationCap, Users } from 'lucide-react';
 import Link from 'next/link';
+import { useUser } from '@clerk/nextjs';
+import { usePathname } from 'next/navigation';
+
+function getUserRole(user: any): string | null {
+  // Check localStorage first (matches ProfileDropdown behavior)
+  if (user?.id && typeof window !== 'undefined') {
+    const localRole = localStorage.getItem(`lingualift-user-role-${user.id}`);
+    if (localRole) return localRole;
+  }
+  // Fallback to Clerk publicMetadata
+  const clerkRole = (user?.publicMetadata as { role?: string })?.role;
+  if (clerkRole) return clerkRole;
+  return null;
+}
 
 function NavHeader() {
+  const { user, isLoaded } = useUser();
+  const pathname = usePathname();
+  const role = getUserRole(user);
+  const isStudent = role === 'student';
+
+  const logoHref = isStudent ? '/student/homework' : '/generate';
+
   return (
     <header className="flex-none z-50 bg-white/80 backdrop-blur-xl border-b border-stone-200/60">
       <div className="max-w-360 mx-auto px-6 lg:px-8 flex items-center justify-between h-14">
         <Link
-          href="/generate"
+          href={logoHref}
           className="flex items-center gap-3 hover:opacity-80 transition-opacity"
         >
           <div className="bg-[#1e1b4b] p-2 rounded-lg shadow-sm">
@@ -25,13 +46,57 @@ function NavHeader() {
         </Link>
 
         <div className="flex items-center gap-4">
-          <Link
-            href="/sessions"
-            className="flex items-center gap-1.5 text-sm font-medium text-stone-500 hover:text-slate-800 transition-colors"
-          >
-            <FolderOpen className="w-4 h-4" />
-            Sessions
-          </Link>
+          {isStudent ? (
+            <>
+              <Link
+                href="/student/vocabulary"
+                className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${
+                  pathname === '/student/vocabulary'
+                    ? 'text-slate-900'
+                    : 'text-stone-500 hover:text-slate-800'
+                }`}
+              >
+                <BookOpen className="w-4 h-4" />
+                Vocabulary
+              </Link>
+              <Link
+                href="/student/homework"
+                className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${
+                  pathname.startsWith('/student/homework')
+                    ? 'text-slate-900'
+                    : 'text-stone-500 hover:text-slate-800'
+                }`}
+              >
+                <GraduationCap className="w-4 h-4" />
+                Homework
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/sessions"
+                className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${
+                  pathname === '/sessions'
+                    ? 'text-slate-900'
+                    : 'text-stone-500 hover:text-slate-800'
+                }`}
+              >
+                <FolderOpen className="w-4 h-4" />
+                Sessions
+              </Link>
+              <Link
+                href="/students"
+                className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${
+                  pathname.startsWith('/students')
+                    ? 'text-slate-900'
+                    : 'text-stone-500 hover:text-slate-800'
+                }`}
+              >
+                <Users className="w-4 h-4" />
+                Students
+              </Link>
+            </>
+          )}
           <ProfileDropdown />
         </div>
       </div>
