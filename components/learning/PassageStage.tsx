@@ -81,8 +81,8 @@ export const PassageStage: React.FC<PassageStageProps> = ({
       context = fullText.slice(start, end).trim();
     }
 
-    const x = rect.left + rect.width / 2;
-    const y = rect.top - 10;
+    const x = Math.max(20, Math.min(rect.left + rect.width / 2, window.innerWidth - 20));
+    const y = Math.max(10, rect.top - 10);
 
     setExplanation(null);
     setSelection({ text, context, x, y });
@@ -160,21 +160,21 @@ export const PassageStage: React.FC<PassageStageProps> = ({
   };
 
   return (
-    <div className="h-full flex gap-5 animate-fade-in">
+    <div className="h-full flex flex-col lg:flex-row gap-5 animate-fade-in">
       {/* Left: Passage */}
       <div className="flex-1 min-w-0 flex flex-col">
         <div
           ref={passageRef}
           className="flex-1 bg-white rounded-xl border border-stone-200/80 shadow-sm overflow-y-auto custom-scrollbar relative"
         >
-          <div className="p-8 lg:p-12">
+          <div className="p-5 sm:p-8 lg:p-12">
             {/* Header */}
             <div className="mb-8 text-center border-b border-stone-200 pb-6">
               <div className="flex items-center justify-center gap-2 text-[#1e1b4b] text-[10px] font-bold uppercase tracking-[0.2em] mb-3">
                 <BookOpen className="w-3 h-3" />
                 {passage.type}
               </div>
-              <h1 className="text-3xl lg:text-4xl font-serif font-bold text-slate-900 leading-tight">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-serif font-bold text-slate-900 leading-tight">
                 {passage.title}
               </h1>
             </div>
@@ -242,7 +242,7 @@ export const PassageStage: React.FC<PassageStageProps> = ({
           style={{ left: `${explanation.x}px`, top: `${explanation.y}px`, transform: 'translate(-50%, -100%)' }}
         >
           <div className="animate-scale-in">
-            <div className="bg-slate-900 text-white p-4 rounded-xl shadow-2xl max-w-72 relative">
+            <div className="bg-slate-900 text-white p-4 rounded-xl shadow-2xl max-w-[min(18rem,calc(100vw-2rem))] relative">
               <div className="flex justify-between items-start gap-2 mb-2">
                 <span className="text-amber-300 font-bold text-sm">&ldquo;{explanation.text}&rdquo;</span>
                 <button onClick={() => setExplanation(null)} className="text-slate-400 hover:text-white">
@@ -264,7 +264,7 @@ export const PassageStage: React.FC<PassageStageProps> = ({
       )}
 
       {/* Right: Vocabulary Panel */}
-      <div className="w-80 lg:w-96 flex flex-col">
+      <div className="w-full lg:w-96 flex flex-col max-h-64 lg:max-h-none">
         <div className="flex items-center justify-between mb-3 px-1">
           <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider">
             My Vocabulary

@@ -35,7 +35,7 @@ export default function SessionsPage() {
 
   return (
     <div className="h-full overflow-y-auto custom-scrollbar">
-      <div className="max-w-3xl mx-auto px-6 lg:px-8 py-10">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
         <div className="mb-8">
           <h1 className="text-2xl font-serif font-bold text-slate-900 mb-1">Saved Sessions</h1>
           <p className="text-sm text-stone-400">Review your past learning sessions</p>
@@ -93,7 +93,7 @@ export default function SessionsPage() {
 
                 <button
                   onClick={(e) => { e.stopPropagation(); handleDelete(session.id); }}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-stone-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-stone-300 hover:text-red-500 sm:opacity-0 sm:group-hover:opacity-100 transition-all"
                   title="Delete session"
                 >
                   <Trash2 className="w-4 h-4" />

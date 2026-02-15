@@ -34,7 +34,7 @@ export function ProfileDropdown() {
       <div className="relative" ref={dropdownRef}>
         <button
           onClick={() => setOpen(!open)}
-          className="w-8 h-8 rounded-full overflow-hidden border-2 border-stone-200 hover:border-stone-400 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+          className="w-9 h-9 rounded-full overflow-hidden border-2 border-stone-200 hover:border-stone-400 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
         >
           {user.imageUrl ? (
             <img src={user.imageUrl} alt="" className="w-full h-full object-cover" />
@@ -46,7 +46,7 @@ export function ProfileDropdown() {
         </button>
 
         {open && (
-          <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-xl border border-stone-200/60 overflow-hidden z-50">
+          <div className="absolute right-0 top-full mt-2 w-56 sm:w-64 bg-white rounded-xl shadow-xl border border-stone-200/60 overflow-hidden z-50">
             <div className="px-4 py-3 border-b border-stone-100">
               <p className="text-sm font-semibold text-slate-900 truncate">
                 {user.fullName || user.emailAddresses[0]?.emailAddress}

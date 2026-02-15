@@ -87,8 +87,8 @@ export default function PassageReaderPage() {
       context = fullText.slice(start, end).trim();
     }
 
-    const x = rect.left + rect.width / 2;
-    const y = rect.top - 10;
+    const x = Math.max(20, Math.min(rect.left + rect.width / 2, window.innerWidth - 20));
+    const y = Math.max(10, rect.top - 10);
 
     setExplanation(null);
     setSelection({ text, context, x, y });
@@ -137,7 +137,7 @@ export default function PassageReaderPage() {
 
   return (
     <div ref={passageRef} className="h-full overflow-y-auto custom-scrollbar">
-      <div className="max-w-3xl mx-auto px-6 lg:px-8 py-10">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
         {/* Back button */}
         <button
           onClick={() => router.push('/student/homework')}
@@ -163,7 +163,7 @@ export default function PassageReaderPage() {
         </div>
 
         {/* Passage content */}
-        <div className="bg-white rounded-2xl border border-stone-200/80 shadow-sm p-8 mb-8 animate-fade-in">
+        <div className="bg-white rounded-2xl border border-stone-200/80 shadow-sm p-5 sm:p-8 mb-8 animate-fade-in">
           <article
             className="text-[15px] text-slate-700 leading-[1.85] font-serif space-y-5 selection:bg-amber-100 selection:text-amber-900"
             onMouseUp={handleTextSelection}
@@ -236,7 +236,7 @@ export default function PassageReaderPage() {
           style={{ left: `${explanation.x}px`, top: `${explanation.y}px`, transform: 'translate(-50%, -100%)' }}
         >
           <div className="animate-scale-in">
-            <div className="bg-slate-900 text-white p-4 rounded-xl shadow-2xl max-w-72 relative">
+            <div className="bg-slate-900 text-white p-4 rounded-xl shadow-2xl max-w-[min(18rem,calc(100vw-2rem))] relative">
               <div className="flex justify-between items-start gap-2 mb-2">
                 <span className="text-amber-300 font-bold text-sm">&ldquo;{explanation.text}&rdquo;</span>
                 <button onClick={() => setExplanation(null)} className="text-slate-400 hover:text-white">

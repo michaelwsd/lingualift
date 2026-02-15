@@ -195,7 +195,7 @@ function WordCard({
           </h3>
           <button
             onClick={handleRemove}
-            className="text-stone-300 hover:text-red-500 transition-colors p-1 rounded-md hover:bg-red-50 opacity-0 group-hover:opacity-100 flex-none"
+            className="text-stone-300 hover:text-red-500 transition-colors p-1 rounded-md hover:bg-red-50 sm:opacity-0 sm:group-hover:opacity-100 flex-none"
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -407,7 +407,7 @@ export default function StudentVocabularyPage() {
 
   return (
     <div className="h-full overflow-y-auto custom-scrollbar">
-      <div className="max-w-4xl mx-auto px-6 lg:px-8 py-10">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
         {/* Header */}
         <div className="mb-6 animate-fade-in">
           <h1 className="text-2xl font-serif font-bold text-slate-900 mb-1">
@@ -423,7 +423,7 @@ export default function StudentVocabularyPage() {
         {allWords.length > 0 && (
           <>
             {/* Search + View Toggle */}
-            <div className="flex items-center gap-3 mb-6 animate-fade-in" style={{ animationDelay: '50ms' }}>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-6 animate-fade-in" style={{ animationDelay: '50ms' }}>
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
                 <input

@@ -166,7 +166,7 @@ export default function StudentHomeworkListPage() {
 
   return (
     <div className="h-full overflow-y-auto custom-scrollbar">
-      <div className="max-w-3xl mx-auto px-6 lg:px-8 py-10">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
         <div className="mb-8 animate-fade-in">
           <button
             onClick={() => router.push('/students')}
@@ -260,7 +260,7 @@ export default function StudentHomeworkListPage() {
 
                 {/* Homework cards (children) */}
                 {group.homework.length > 0 && (
-                  <div className="ml-6 mt-1 space-y-1">
+                  <div className="ml-4 sm:ml-6 mt-1 space-y-1">
                     {group.homework.map((hw) => {
                       const pStatus = hw.progressStatus || 'not_started';
                       const progress = progressConfig[pStatus];

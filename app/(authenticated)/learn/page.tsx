@@ -112,7 +112,7 @@ export default function LearnPage() {
       </div>
 
       {/* Stage Content */}
-      <div className="flex-1 overflow-hidden px-5 lg:px-8 pt-4 pb-2">
+      <div className="flex-1 overflow-hidden px-3 sm:px-5 lg:px-8 pt-4 pb-2">
         <div
           key={stage}
           className={`h-full ${hasNavigated ? (direction === 'forward' ? 'animate-slide-in-right' : 'animate-slide-in-left') : ''}`}
@@ -154,44 +154,45 @@ export default function LearnPage() {
       </div>
 
       {/* Navigation Bar */}
-      <div className="flex-none border-t border-stone-200/60 bg-white/60 backdrop-blur-sm px-5 lg:px-8 py-2.5">
-        <div className="flex items-center justify-between">
-          <div>
+      <div className="flex-none border-t border-stone-200/60 bg-white/60 backdrop-blur-sm px-3 sm:px-5 lg:px-8 py-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex-none">
             {stage > 0 ? (
               <button
                 onClick={goBack}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-stone-600 hover:text-stone-800 hover:bg-stone-100 rounded-lg transition-colors"
+                className="flex items-center gap-1.5 px-3 sm:px-4 py-2 text-sm font-medium text-stone-600 hover:text-stone-800 hover:bg-stone-100 rounded-lg transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" />
-                {STAGES[stage - 1].label}
+                <span className="hidden sm:inline">{STAGES[stage - 1].label}</span>
               </button>
             ) : (
               <button
                 onClick={handleNewPassage}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-stone-500 hover:text-stone-700 hover:bg-stone-100 rounded-lg transition-colors"
+                className="flex items-center gap-1.5 px-3 sm:px-4 py-2 text-sm font-medium text-stone-500 hover:text-stone-700 hover:bg-stone-100 rounded-lg transition-colors"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                New Passage
+                <span className="hidden sm:inline">New Passage</span>
               </button>
             )}
           </div>
 
-          <div className="text-xs text-stone-400 font-medium">
+          <div className="hidden sm:block text-xs text-stone-400 font-medium">
             {collectedWords.length > 0 && `${collectedWords.length} words collected`}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center flex-wrap justify-end gap-2">
             <button
               onClick={() => setShowPassageModal(true)}
-              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 rounded-lg transition-all shadow-sm hover:shadow-md"
+              className="flex items-center gap-1.5 px-3 sm:px-4 py-2 text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 rounded-lg transition-all shadow-sm hover:shadow-md"
+              title="Send Passage"
             >
               <Send className="w-3.5 h-3.5" />
-              Send Passage
+              <span className="hidden sm:inline">Send Passage</span>
             </button>
             {stage < 2 ? (
               <button
                 onClick={goNext}
-                className="flex items-center gap-1.5 px-5 py-2 text-sm font-medium text-white bg-[#1e1b4b] hover:bg-indigo-800 rounded-lg transition-all shadow-sm hover:shadow-md"
+                className="flex items-center gap-1.5 px-4 sm:px-5 py-2 text-sm font-medium text-white bg-[#1e1b4b] hover:bg-indigo-800 rounded-lg transition-all shadow-sm hover:shadow-md"
               >
                 {STAGES[stage + 1].label}
                 <ChevronRight className="w-4 h-4" />
@@ -201,24 +202,26 @@ export default function LearnPage() {
                 <button
                   onClick={handleSaveSession}
                   disabled={showSaved}
-                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-all shadow-sm disabled:opacity-60"
+                  className="flex items-center gap-1.5 px-3 sm:px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-all shadow-sm disabled:opacity-60"
+                  title="Save"
                 >
                   <Save className="w-3.5 h-3.5" />
-                  Save
+                  <span className="hidden sm:inline">Save</span>
                 </button>
                 <button
                   onClick={() => setShowHomeworkModal(true)}
-                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-[#1e1b4b] hover:bg-indigo-800 rounded-lg transition-all shadow-sm hover:shadow-md"
+                  className="flex items-center gap-1.5 px-3 sm:px-4 py-2 text-sm font-medium text-white bg-[#1e1b4b] hover:bg-indigo-800 rounded-lg transition-all shadow-sm hover:shadow-md"
                 >
                   <GraduationCap className="w-3.5 h-3.5" />
-                  Prepare Homework
+                  <span className="hidden sm:inline">Prepare Homework</span>
                 </button>
                 <button
                   onClick={handleExit}
-                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-stone-600 hover:text-stone-800 hover:bg-stone-100 border border-stone-200 rounded-lg transition-colors"
+                  className="flex items-center gap-1.5 px-3 sm:px-4 py-2 text-sm font-medium text-stone-600 hover:text-stone-800 hover:bg-stone-100 border border-stone-200 rounded-lg transition-colors"
+                  title="Exit"
                 >
                   <LogOut className="w-3.5 h-3.5" />
-                  Exit
+                  <span className="hidden sm:inline">Exit</span>
                 </button>
               </>
             )}

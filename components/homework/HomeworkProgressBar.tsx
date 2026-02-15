@@ -47,10 +47,10 @@ export const HomeworkProgressBar: React.FC<HomeworkProgressBarProps> = ({
   };
 
   return (
-    <div className="bg-white/90 backdrop-blur-md border-b border-stone-200/50 px-5 lg:px-8 py-4">
+    <div className="bg-white/90 backdrop-blur-md border-b border-stone-200/50 px-3 sm:px-5 lg:px-8 py-4">
       <div className="max-w-2xl mx-auto">
         {/* Phase tabs */}
-        <div className="flex items-center justify-center gap-3 mb-3">
+        <div className="flex items-center justify-center gap-2 sm:gap-3 mb-3">
           {PHASES.map((phase, i) => {
             const isActive = phase.key === currentPhase;
             const isDone =
@@ -62,7 +62,7 @@ export const HomeworkProgressBar: React.FC<HomeworkProgressBarProps> = ({
             return (
               <React.Fragment key={phase.key}>
                 {i > 0 && (
-                  <div className={`w-8 h-0.5 rounded-full transition-all duration-500 ${
+                  <div className={`w-4 sm:w-8 h-0.5 rounded-full transition-all duration-500 ${
                     isDone || isActive ? 'bg-[#1e1b4b]' : 'bg-stone-200'
                   }`} />
                 )}
@@ -78,13 +78,13 @@ export const HomeworkProgressBar: React.FC<HomeworkProgressBarProps> = ({
                   } ${clickable ? 'cursor-pointer hover:scale-105' : ''}`}
                 >
                   {isDone && !isActive ? <Check className="w-3.5 h-3.5" /> : phase.icon}
-                  {phase.label}
+                  <span className="hidden sm:inline">{phase.label}</span>
                 </button>
               </React.Fragment>
             );
           })}
           {/* Done pill */}
-          <div className={`w-8 h-0.5 rounded-full transition-all duration-500 ${
+          <div className={`w-4 sm:w-8 h-0.5 rounded-full transition-all duration-500 ${
             isCompleted ? 'bg-emerald-500' : 'bg-stone-200'
           }`} />
           <div
@@ -95,7 +95,7 @@ export const HomeworkProgressBar: React.FC<HomeworkProgressBarProps> = ({
             }`}
           >
             <Trophy className="w-3.5 h-3.5" />
-            Done
+            <span className="hidden sm:inline">Done</span>
           </div>
         </div>
 

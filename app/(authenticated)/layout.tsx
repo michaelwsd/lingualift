@@ -19,7 +19,7 @@ function NavHeader() {
 
   return (
     <header className="flex-none z-50 bg-white/80 backdrop-blur-xl border-b border-stone-200/60">
-      <div className="max-w-360 mx-auto px-6 lg:px-8 flex items-center justify-between h-14">
+      <div className="max-w-360 mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-14">
         <Link
           href={logoHref}
           className="flex items-center gap-3 hover:opacity-80 transition-opacity"
@@ -31,7 +31,7 @@ function NavHeader() {
             <span className="block text-lg font-serif font-bold text-slate-900 leading-none">
               LinguaLift
             </span>
-            <span className="text-[10px] text-slate-400 font-medium tracking-widest uppercase">VCE EAL</span>
+            <span className="hidden sm:block text-[10px] text-slate-400 font-medium tracking-widest uppercase">VCE EAL</span>
           </div>
         </Link>
 
@@ -47,7 +47,7 @@ function NavHeader() {
                 }`}
               >
                 <BookOpen className="w-4 h-4" />
-                Vocabulary
+                <span className="hidden sm:inline">Vocabulary</span>
               </Link>
               <Link
                 href="/student/homework"
@@ -58,7 +58,7 @@ function NavHeader() {
                 }`}
               >
                 <GraduationCap className="w-4 h-4" />
-                Homework
+                <span className="hidden sm:inline">Homework</span>
               </Link>
             </>
           ) : (
@@ -72,7 +72,7 @@ function NavHeader() {
                 }`}
               >
                 <FolderOpen className="w-4 h-4" />
-                Sessions
+                <span className="hidden sm:inline">Sessions</span>
               </Link>
               <Link
                 href="/students"
@@ -83,7 +83,7 @@ function NavHeader() {
                 }`}
               >
                 <Users className="w-4 h-4" />
-                Students
+                <span className="hidden sm:inline">Students</span>
               </Link>
             </>
           )}
@@ -136,7 +136,7 @@ function RouteGuard({ children }: { children: React.ReactNode }) {
 export default function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   return (
     <LinguaLiftProvider>
-      <div className="h-screen flex flex-col bg-[#f8f6f1] text-slate-900 font-sans selection:bg-indigo-200">
+      <div className="h-dvh flex flex-col bg-[#f8f6f1] text-slate-900 font-sans selection:bg-indigo-200">
         <NavHeader />
         <main className="flex-1 overflow-hidden">
           <RouteGuard>{children}</RouteGuard>

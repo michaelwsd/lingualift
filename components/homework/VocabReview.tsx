@@ -20,7 +20,7 @@ export const VocabReview: React.FC<VocabReviewProps> = ({ words, onComplete }) =
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex-1 overflow-y-auto custom-scrollbar px-5 lg:px-8 py-6">
+      <div className="flex-1 overflow-y-auto custom-scrollbar px-3 sm:px-5 lg:px-8 py-6">
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-8 animate-fade-in">
             <div className="w-14 h-14 bg-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
@@ -72,7 +72,7 @@ export const VocabReview: React.FC<VocabReviewProps> = ({ words, onComplete }) =
         </div>
       </div>
 
-      <div className="flex-none border-t border-stone-200/60 bg-white/60 backdrop-blur-sm px-5 lg:px-8 py-3">
+      <div className="flex-none border-t border-stone-200/60 bg-white/60 backdrop-blur-sm px-3 sm:px-5 lg:px-8 py-3">
         <div className="max-w-2xl mx-auto flex justify-end">
           <button
             onClick={onComplete}

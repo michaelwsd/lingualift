@@ -32,7 +32,7 @@ export default function GeneratePage() {
   };
 
   return (
-    <div className="h-full flex items-center justify-center px-6 overflow-y-auto">
+    <div className="h-full flex items-center justify-center px-4 sm:px-6 overflow-y-auto py-6 sm:py-10">
       <GeneratorForm onGenerate={handleGenerate} isGenerating={isGenerating} />
     </div>
   );

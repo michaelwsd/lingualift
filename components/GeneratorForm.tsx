@@ -114,18 +114,18 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({ onGenerate, isGene
       <div className="bg-white rounded-2xl shadow-2xl shadow-indigo-900/5 border border-stone-200/60 overflow-hidden">
 
         {/* Header */}
-        <div className="bg-linear-to-br from-[#1e1b4b] to-[#312e81] px-8 py-8 text-center relative overflow-hidden">
+        <div className="bg-linear-to-br from-[#1e1b4b] to-[#312e81] px-5 py-6 sm:px-8 sm:py-8 text-center relative overflow-hidden">
           <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.4) 1px, transparent 0)', backgroundSize: '20px 20px' }} />
           <div className="relative z-10">
             <div className="w-14 h-14 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center mx-auto mb-3 border border-white/20">
               <GraduationCap className="w-7 h-7 text-indigo-200" />
             </div>
-            <h2 className="text-2xl font-serif font-bold text-white mb-1">EAL Resource Generator</h2>
+            <h2 className="text-xl sm:text-2xl font-serif font-bold text-white mb-1">EAL Resource Generator</h2>
             <p className="text-indigo-300/80 font-light text-sm">Create tailored reading passages</p>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="px-8 py-7 space-y-7 bg-[#fdfbf7]">
+        <form onSubmit={handleSubmit} className="px-5 py-5 sm:px-8 sm:py-7 space-y-7 bg-[#fdfbf7]">
 
           {/* Topic */}
           <div className="space-y-4">
@@ -195,7 +195,7 @@ export const GeneratorForm: React.FC<GeneratorFormProps> = ({ onGenerate, isGene
               <h3 className="text-xs font-bold text-stone-500 uppercase tracking-widest">Format</h3>
             </div>
 
-            <div className="grid grid-cols-4 gap-1.5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
               {LITERATURE_TYPES.map((type) => (
                 <label
                   key={type}

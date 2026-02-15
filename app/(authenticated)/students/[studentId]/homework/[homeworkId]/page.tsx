@@ -93,7 +93,7 @@ export default function HomeworkQuestionsPage() {
 
   return (
     <div className="h-full overflow-y-auto custom-scrollbar">
-      <div className="max-w-3xl mx-auto px-6 lg:px-8 py-10">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
         {/* Header */}
         <div className="mb-8 animate-fade-in">
           <button
@@ -257,7 +257,7 @@ export default function HomeworkQuestionsPage() {
                       <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-3 block">
                         Set {i + 1} &middot; {ex.words.length} pairs
                       </span>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-2">Words</p>
                           <div className="space-y-1.5">
@@ -294,7 +294,7 @@ export default function HomeworkQuestionsPage() {
                       <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-3 block">
                         Set {i + 1} &middot; {ex.baskets.length} baskets
                       </span>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {ex.baskets.map(basket => {
                           const syns = ex.synonymPool.filter(s => s.correctBasketId === basket.id);
                           return (

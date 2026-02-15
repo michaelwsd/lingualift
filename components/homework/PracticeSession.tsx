@@ -347,7 +347,7 @@ export const PracticeSession: React.FC<PracticeSessionProps> = ({
   // --- Render interactive exercises ---
   if (currentPassageFill) {
     return (
-      <div className="h-full flex flex-col overflow-y-auto px-5 lg:px-8 py-6">
+      <div className="h-full flex flex-col overflow-y-auto px-3 sm:px-5 lg:px-8 py-6">
         <div className="w-full max-w-3xl mx-auto animate-fade-in" key={`${currentItemId}-${currentIndex}`}>
           <div className="flex items-center justify-between mb-4">
             <span className="text-xs font-medium text-stone-400">Exercise {currentIndex + 1}</span>
@@ -365,7 +365,7 @@ export const PracticeSession: React.FC<PracticeSessionProps> = ({
 
   if (currentMatching) {
     return (
-      <div className="h-full flex flex-col overflow-y-auto px-5 lg:px-8 py-6">
+      <div className="h-full flex flex-col overflow-y-auto px-3 sm:px-5 lg:px-8 py-6">
         <div className="w-full max-w-3xl mx-auto animate-fade-in" key={`${currentItemId}-${currentIndex}`}>
           <div className="flex items-center justify-between mb-4">
             <span className="text-xs font-medium text-stone-400">Exercise {currentIndex + 1}</span>
@@ -383,7 +383,7 @@ export const PracticeSession: React.FC<PracticeSessionProps> = ({
 
   if (currentBasket) {
     return (
-      <div className="h-full flex flex-col overflow-y-auto px-5 lg:px-8 py-6">
+      <div className="h-full flex flex-col overflow-y-auto px-3 sm:px-5 lg:px-8 py-6">
         <div className="w-full max-w-3xl mx-auto animate-fade-in" key={`${currentItemId}-${currentIndex}`}>
           <div className="flex items-center justify-between mb-4">
             <span className="text-xs font-medium text-stone-400">Exercise {currentIndex + 1}</span>
@@ -411,7 +411,7 @@ export const PracticeSession: React.FC<PracticeSessionProps> = ({
   const config = TYPE_CONFIG[currentMCQuestion.type];
 
   return (
-    <div className="h-full flex flex-col items-center justify-center px-5 lg:px-8 py-6">
+    <div className="h-full flex flex-col items-center justify-center px-3 sm:px-5 lg:px-8 py-6">
       <div className="w-full max-w-xl animate-fade-in" key={`${currentMCQuestion.id}-${currentIndex}`}>
         {/* Question counter + type badge */}
         <div className="flex items-center justify-between mb-6">
@@ -449,7 +449,7 @@ export const PracticeSession: React.FC<PracticeSessionProps> = ({
               <p className="text-xs text-stone-400 uppercase tracking-wider font-medium mb-2">
                 {config.promptLabel}
               </p>
-              <h2 className="text-3xl font-serif font-bold text-[#1e1b4b] capitalize">
+              <h2 className="text-2xl sm:text-3xl font-serif font-bold text-[#1e1b4b] capitalize">
                 {currentMCQuestion.prompt}
               </h2>
             </>
@@ -468,7 +468,7 @@ export const PracticeSession: React.FC<PracticeSessionProps> = ({
                 key={i}
                 onClick={() => !isChecked && setSelectedOption(option)}
                 disabled={isChecked}
-                className={`w-full text-left px-5 py-4 rounded-xl border-2 text-sm leading-relaxed transition-all duration-200 ${
+                className={`w-full text-left px-4 py-3 sm:px-5 sm:py-4 rounded-xl border-2 text-sm leading-relaxed transition-all duration-200 ${
                   isCorrectOption
                     ? 'border-emerald-400 bg-emerald-50 text-emerald-800 shadow-sm'
                     : isIncorrectOption

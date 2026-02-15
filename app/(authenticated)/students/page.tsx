@@ -30,7 +30,7 @@ export default function StudentsPage() {
 
   return (
     <div className="h-full overflow-y-auto custom-scrollbar">
-      <div className="max-w-3xl mx-auto px-6 lg:px-8 py-10">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
         <div className="mb-8 animate-fade-in">
           <h1 className="text-2xl font-serif font-bold text-slate-900 mb-1">Students</h1>
           <p className="text-sm text-stone-500">

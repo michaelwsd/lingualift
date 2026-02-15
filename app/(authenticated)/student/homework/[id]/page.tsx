@@ -183,7 +183,7 @@ export default function HomeworkSessionPage() {
           <>
             <button
               onClick={handleExit}
-              className="absolute top-4 left-5 lg:left-8 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-stone-400 hover:text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors"
+              className="absolute top-4 left-3 sm:left-5 lg:left-8 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-stone-400 hover:text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors"
               title="Save and exit"
             >
               <LogOut className="w-3.5 h-3.5" />
