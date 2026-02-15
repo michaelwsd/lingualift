@@ -136,7 +136,7 @@ export const generatePassageContent = async (config: GenerationConfig): Promise<
     The topic is: "${config.topic}".
 
     Requirements:
-    1. Length: Approximately 300 words.
+    1. Length: Approximately 350 words.
     2. Structure: Split the passage into 3-5 paragraphs. Separate each paragraph with a double newline (\\n\\n). Each paragraph should focus on a distinct aspect or idea of the topic.
     3. Difficulty Level: Appropriate for VCE EAL students (intermediate English proficiency, ages 16-18).
        Use clear but sophisticated language. Include some challenging vocabulary but ensure the overall text is accessible.
