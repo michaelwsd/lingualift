@@ -76,6 +76,7 @@ export interface HomeworkListItem {
   passageTitle: string;
   passageType: string;
   wordCount: number;
+  progressStatus?: 'not_started' | 'started' | 'in_progress' | 'completed';
 }
 
 export const fetchHomeworkList = async (): Promise<HomeworkListItem[]> => {
@@ -98,7 +99,6 @@ export const saveHomeworkProgress = async (
   homeworkId: string,
   data: {
     currentPhase: HomeworkPhase;
-    score: number;
     exercisesCompleted: string[];
     answersGiven: Record<string, any>;
   }

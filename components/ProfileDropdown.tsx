@@ -4,17 +4,7 @@ import { useUser, useClerk } from '@clerk/nextjs';
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { LogOut, KeyRound, X, Check } from 'lucide-react';
-
-const ADMIN_PASSWORD_KEY = 'lingualift-admin-password';
-const DEFAULT_ADMIN_PASSWORD = 'admin1234';
-
-function getAdminPassword() {
-  return localStorage.getItem(ADMIN_PASSWORD_KEY) || DEFAULT_ADMIN_PASSWORD;
-}
-
-function getUserRole(userId: string) {
-  return localStorage.getItem(`lingualift-user-role-${userId}`);
-}
+import { getUserRole } from '@/lib/getUserRole';
 
 export function ProfileDropdown() {
   const { user } = useUser();
@@ -23,7 +13,7 @@ export function ProfileDropdown() {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const isTeacher = user ? getUserRole(user.id) === 'teacher' : false;
+  const isTeacher = getUserRole(user) === 'teacher';
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -100,14 +90,11 @@ function PasswordConfigModal({ onClose }: { onClose: () => void }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setError('');
 
-    if (currentPassword !== getAdminPassword()) {
-      setError('Current password is incorrect');
-      return;
-    }
     if (newPassword.length < 4) {
       setError('New password must be at least 4 characters');
       return;
@@ -117,13 +104,31 @@ function PasswordConfigModal({ onClose }: { onClose: () => void }) {
       return;
     }
 
-    localStorage.setItem(ADMIN_PASSWORD_KEY, newPassword);
-    setSuccess(true);
-    setTimeout(onClose, 1200);
+    setSaving(true);
+    try {
+      const res = await fetch('/api/admin-password', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || 'Failed to update password');
+        setSaving(false);
+        return;
+      }
+
+      setSuccess(true);
+      setTimeout(onClose, 1200);
+    } catch {
+      setError('Something went wrong. Please try again.');
+      setSaving(false);
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center">
+    <div className="fixed inset-0 z-100 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-white rounded-2xl shadow-2xl border border-stone-200/60 w-full max-w-sm mx-4 overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100">
@@ -176,7 +181,7 @@ function PasswordConfigModal({ onClose }: { onClose: () => void }) {
             {error && <p className="text-sm text-red-600 font-medium">{error}</p>}
             <button
               onClick={handleSave}
-              disabled={!currentPassword || !newPassword || !confirmPassword}
+              disabled={!currentPassword || !newPassword || !confirmPassword || saving}
               className="w-full py-2.5 bg-indigo-900 hover:bg-indigo-800 disabled:bg-stone-300 disabled:cursor-not-allowed text-white text-sm font-medium rounded-xl shadow-md transition-all duration-200 mt-1"
             >
               Update password

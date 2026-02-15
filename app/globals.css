@@ -99,17 +99,6 @@ button, [role="button"] {
   animation: shimmer 1.5s ease-in-out infinite;
 }
 
-/* Score popup animations */
-@keyframes scorePopUp {
-  0% { opacity: 1; transform: translateY(0) scale(1); }
-  50% { opacity: 0.8; transform: translateY(-20px) scale(1.1); }
-  100% { opacity: 0; transform: translateY(-40px) scale(0.9); }
-}
-.animate-score-pop {
-  animation: scorePopUp 0.8s ease-out forwards;
-  pointer-events: none;
-}
-
 /* Progress pulse */
 @keyframes progressPulse {
   0%, 100% { transform: scale(1); }

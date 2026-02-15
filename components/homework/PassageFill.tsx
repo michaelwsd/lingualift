@@ -106,7 +106,7 @@ export const PassageFill: React.FC<PassageFillProps> = ({ exercise, onComplete }
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={(e) => handleDrop(e, blankIndex)}
-          className={`inline-flex items-center justify-center min-w-[100px] mx-1 px-3 py-1 rounded-lg border-2 border-dashed text-sm font-medium transition-all cursor-pointer ${
+          className={`inline-flex items-center justify-center min-w-25 mx-1 px-3 py-1 rounded-lg border-2 border-dashed text-sm font-medium transition-all cursor-pointer ${
             isCorrect
               ? 'border-emerald-400 bg-emerald-50 text-emerald-700 border-solid'
               : isIncorrect
@@ -136,7 +136,7 @@ export const PassageFill: React.FC<PassageFillProps> = ({ exercise, onComplete }
       {/* Word bank */}
       <div className="mb-5">
         <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-2">Word Bank</p>
-        <div className="flex flex-wrap gap-2 min-h-[40px] bg-stone-50 rounded-lg p-3 border border-stone-200">
+        <div className="flex flex-wrap gap-2 min-h-10 bg-stone-50 rounded-lg p-3 border border-stone-200">
           {availableWords.length === 0 && !checked ? (
             <p className="text-xs text-stone-400 italic">All words placed</p>
           ) : (

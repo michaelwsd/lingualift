@@ -55,8 +55,8 @@ export interface SavedSession {
   savedAt: number;
   passage: Passage;
   collectedWords: CollectedWord[];
-  fillInBlankExercise: FillInBlankExercise | null;
-  synonymExercise: SynonymExercise | null;
+  fillInBlankExercises: FillInBlankExercise[] | null;
+  synonymExercises: SynonymExercise[] | null;
 }
 
 // --- Homework Types ---
@@ -127,9 +127,15 @@ export interface PracticeSessionState {
   basketExercises: SynonymBasketExercise[];
   queue: string[];
   currentQueueIndex: number;
-  score: number;
   answeredCorrectly: string[];
   answeredIncorrectly: string[];
+}
+
+export interface GeneratedExercises {
+  practiceQuestions: PracticeQuestion[];
+  passageFillExercises: PassageFillExercise[];
+  wordMatchingExercises: WordMatchingExercise[];
+  synonymBasketExercises: SynonymBasketExercise[];
 }
 
 export interface HomeworkAssignment {
@@ -145,6 +151,7 @@ export interface HomeworkAssignment {
   mc_synonyms: MCSynonymQuestion[];
   cross_matching_data: CrossMatchingData;
   synonym_groups: SynonymExercise;
+  generated_exercises: GeneratedExercises;
 }
 
 export interface HomeworkProgress {
@@ -152,7 +159,6 @@ export interface HomeworkProgress {
   homework_id: string;
   student_id: string;
   current_phase: HomeworkPhase;
-  score: number;
   exercises_completed: string[];
   answers_given: Record<string, any>;
   updated_at: string;

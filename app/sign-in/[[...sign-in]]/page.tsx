@@ -14,7 +14,7 @@ export default function SignInPage() {
         <p className="text-stone-500 text-sm font-light tracking-wide">Your VCE EAL Learning Companion</p>
       </div>
       <SignIn
-        forceRedirectUrl="/choose-role"
+        forceRedirectUrl="/"
         appearance={{
           elements: {
             rootBox: "mx-auto",

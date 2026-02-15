@@ -147,12 +147,12 @@ export const MCDefinitions: React.FC<MCDefinitionsProps> = ({
             {isCorrect ? (
               <>
                 <Check className="w-4 h-4" />
-                Correct! +5 points
+                Correct!
               </>
             ) : (
               <>
                 <X className="w-4 h-4" />
-                Incorrect. -3 points
+                Incorrect.
               </>
             )}
             <ArrowRight className="w-3.5 h-3.5 ml-auto animate-pulse" />

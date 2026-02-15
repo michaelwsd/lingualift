@@ -3,86 +3,122 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { CollectedWord, FillInBlankExercise } from '@/types';
 import { generateFillInBlank } from '@/services/api';
-import { Loader2, Check, X, RotateCcw, RefreshCw, Eye } from 'lucide-react';
+import { Loader2, Check, X, RotateCcw, RefreshCw, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface FillInBlanksProps {
-  words: CollectedWord[];
-  cachedExercise: FillInBlankExercise | null;
-  onExerciseGenerated: (exercise: FillInBlankExercise) => void;
+  wordGroups: CollectedWord[][];
+  cachedExercises: FillInBlankExercise[] | null;
+  onExerciseGenerated: (groupIndex: number, exercise: FillInBlankExercise) => void;
 }
 
-export const FillInBlanks: React.FC<FillInBlanksProps> = ({ words, cachedExercise, onExerciseGenerated }) => {
-  const [passage, setPassage] = useState(cachedExercise?.passage ?? '');
-  const [answers, setAnswers] = useState<string[]>(cachedExercise?.answers ?? []);
-  const [placedWords, setPlacedWords] = useState<Record<number, string>>({});
-  const [selectedWord, setSelectedWord] = useState<string | null>(null);
-  const [checked, setChecked] = useState(false);
-  const [results, setResults] = useState<Record<number, boolean>>({});
-  const [isLoading, setIsLoading] = useState(!cachedExercise);
-  const [draggedWord, setDraggedWord] = useState<string | null>(null);
-  const [revealed, setRevealed] = useState(false);
+interface GroupState {
+  placedWords: Record<number, string>;
+  selectedWord: string | null;
+  draggedWord: string | null;
+  checked: boolean;
+  results: Record<number, boolean>;
+  revealed: boolean;
+}
 
-  const loadExercise = useCallback(async () => {
-    setIsLoading(true);
-    setChecked(false);
-    setResults({});
-    setPlacedWords({});
-    setSelectedWord(null);
+const emptyGroupState = (): GroupState => ({
+  placedWords: {},
+  selectedWord: null,
+  draggedWord: null,
+  checked: false,
+  results: {},
+  revealed: false,
+});
+
+export const FillInBlanks: React.FC<FillInBlanksProps> = ({ wordGroups, cachedExercises, onExerciseGenerated }) => {
+  const [currentGroup, setCurrentGroup] = useState(0);
+  const [exercises, setExercises] = useState<Record<number, FillInBlankExercise>>(() => {
+    if (!cachedExercises) return {};
+    const map: Record<number, FillInBlankExercise> = {};
+    cachedExercises.forEach((e, i) => { map[i] = e; });
+    return map;
+  });
+  const [loading, setLoading] = useState<Record<number, boolean>>({});
+  const [groupStates, setGroupStates] = useState<Record<number, GroupState>>({});
+
+  const exercise = exercises[currentGroup] || null;
+  const isLoading = loading[currentGroup] || false;
+  const state = groupStates[currentGroup] || emptyGroupState();
+  const words = wordGroups[currentGroup];
+
+  const updateState = useCallback((patch: Partial<GroupState>) => {
+    setGroupStates(prev => ({
+      ...prev,
+      [currentGroup]: { ...(prev[currentGroup] || emptyGroupState()), ...patch },
+    }));
+  }, [currentGroup]);
+
+  const loadExercise = useCallback(async (groupIdx: number, force?: boolean) => {
+    if (!force && exercises[groupIdx]) return;
+    setLoading(prev => ({ ...prev, [groupIdx]: true }));
+    setGroupStates(prev => ({ ...prev, [groupIdx]: emptyGroupState() }));
     try {
-      const wordTexts = words.map(w => w.word);
+      const groupWords = wordGroups[groupIdx];
+      const wordTexts = groupWords.map(w => w.word);
       const result = await generateFillInBlank(wordTexts);
-      setPassage(result.passage);
-      setAnswers(result.answers);
-      onExerciseGenerated(result);
+      setExercises(prev => ({ ...prev, [groupIdx]: result }));
+      onExerciseGenerated(groupIdx, result);
     } catch (error) {
       console.error('Failed to generate fill-in-blank:', error);
     } finally {
-      setIsLoading(false);
+      setLoading(prev => ({ ...prev, [groupIdx]: false }));
     }
-  }, [words, onExerciseGenerated]);
+  }, [wordGroups, exercises, onExerciseGenerated]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!cachedExercise && words.length > 0) loadExercise();
-  }, []);
+    if (!exercises[currentGroup]) {
+      loadExercise(currentGroup);
+    }
+  }, [currentGroup, exercises, loadExercise]);
 
-  // Parse passage into segments
-  const segments = passage.split(/(__BLANK_\d+__)/g);
-  const blankCount = answers.length;
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 text-indigo-400 animate-spin mx-auto mb-3" />
+          <p className="text-sm text-stone-400">Generating exercise...</p>
+        </div>
+      </div>
+    );
+  }
 
-  // Get available words (not placed anywhere)
-  const placedWordValues = Object.values(placedWords);
+  if (!exercise) return null;
+
+  const segments = exercise.passage.split(/(__BLANK_\d+__)/g);
+  const blankCount = exercise.answers.length;
+  const placedWordValues = Object.values(state.placedWords);
   const availableWords = words.filter(w => !placedWordValues.includes(w.word));
+  const allFilled = Object.keys(state.placedWords).length === blankCount;
+  const allCorrect = state.checked && Object.values(state.results).every(v => v);
+  const totalGroups = wordGroups.length;
 
   const handleWordBankClick = (word: string) => {
-    if (checked || revealed) return;
-    if (selectedWord === word) {
-      setSelectedWord(null);
-    } else {
-      setSelectedWord(word);
-    }
+    if (state.checked || state.revealed) return;
+    updateState({ selectedWord: state.selectedWord === word ? null : word });
   };
 
   const handleBlankClick = (blankIndex: number) => {
-    if (checked || revealed) return;
-    if (placedWords[blankIndex]) {
-      // Remove word from blank
-      setPlacedWords(prev => {
-        const next = { ...prev };
-        delete next[blankIndex];
-        return next;
-      });
+    if (state.checked || state.revealed) return;
+    if (state.placedWords[blankIndex]) {
+      const next = { ...state.placedWords };
+      delete next[blankIndex];
+      updateState({ placedWords: next });
       return;
     }
-    if (selectedWord) {
-      setPlacedWords(prev => ({ ...prev, [blankIndex]: selectedWord }));
-      setSelectedWord(null);
+    if (state.selectedWord) {
+      updateState({
+        placedWords: { ...state.placedWords, [blankIndex]: state.selectedWord },
+        selectedWord: null,
+      });
     }
   };
 
-  // Drag handlers
   const handleDragStart = (word: string) => {
-    setDraggedWord(word);
+    updateState({ draggedWord: word });
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -97,74 +133,75 @@ export const FillInBlanks: React.FC<FillInBlanksProps> = ({ words, cachedExercis
   const handleDrop = (e: React.DragEvent, blankIndex: number) => {
     e.preventDefault();
     (e.currentTarget as HTMLElement).classList.remove('drag-over');
-    if (checked || revealed || !draggedWord) return;
-
-    setPlacedWords(prev => ({ ...prev, [blankIndex]: draggedWord }));
-    setDraggedWord(null);
+    if (state.checked || state.revealed || !state.draggedWord) return;
+    updateState({
+      placedWords: { ...state.placedWords, [blankIndex]: state.draggedWord },
+      draggedWord: null,
+    });
   };
 
   const handleCheck = () => {
     const newResults: Record<number, boolean> = {};
     for (let i = 0; i < blankCount; i++) {
-      const placed = placedWords[i];
-      const correct = answers[i];
+      const placed = state.placedWords[i];
+      const correct = exercise.answers[i];
       newResults[i] = placed?.toLowerCase() === correct?.toLowerCase();
     }
-    setResults(newResults);
-    setChecked(true);
+    updateState({ results: newResults, checked: true });
   };
 
   const handleReveal = () => {
     const correct: Record<number, string> = {};
-    answers.forEach((a, i) => { correct[i] = a; });
-    setPlacedWords(correct);
-    setRevealed(true);
-    setChecked(false);
-    setResults({});
-    setSelectedWord(null);
+    exercise.answers.forEach((a, i) => { correct[i] = a; });
+    updateState({ placedWords: correct, revealed: true, checked: false, results: {}, selectedWord: null });
   };
 
   const handleReset = () => {
-    setPlacedWords({});
-    setSelectedWord(null);
-    setChecked(false);
-    setResults({});
-    setRevealed(false);
+    updateState(emptyGroupState());
   };
-
-  const allFilled = Object.keys(placedWords).length === blankCount;
-  const allCorrect = checked && Object.values(results).every(v => v);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 text-indigo-400 animate-spin mx-auto mb-3" />
-          <p className="text-sm text-stone-400">Generating exercise...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-base font-bold text-slate-800 font-serif">Fill in the Blanks</h3>
-        <button
-          onClick={loadExercise}
-          disabled={isLoading}
-          className="flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
-        >
-          <RefreshCw className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} />
-          New Passage
-        </button>
+        <div className="flex items-center gap-2">
+          {totalGroups > 1 && (
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setCurrentGroup(g => g - 1)}
+                disabled={currentGroup === 0}
+                className="p-1 rounded-md hover:bg-stone-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4 text-stone-500" />
+              </button>
+              <span className="text-xs font-medium text-stone-400 min-w-12 text-center">
+                {currentGroup + 1} of {totalGroups}
+              </span>
+              <button
+                onClick={() => setCurrentGroup(g => g + 1)}
+                disabled={currentGroup === totalGroups - 1}
+                className="p-1 rounded-md hover:bg-stone-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+              >
+                <ChevronRight className="w-4 h-4 text-stone-500" />
+              </button>
+            </div>
+          )}
+          <button
+            onClick={() => loadExercise(currentGroup, true)}
+            disabled={isLoading}
+            className="flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
+          >
+            <RefreshCw className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} />
+            New Passage
+          </button>
+        </div>
       </div>
 
       {/* Word Bank */}
-      <div className="mb-5">
+      <div className="mb-5" key={`bank-${currentGroup}`}>
         <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-2">Word Bank</p>
         <div className="flex flex-wrap gap-2 min-h-10 bg-stone-50 rounded-lg p-3 border border-stone-200">
-          {availableWords.length === 0 && !checked ? (
+          {availableWords.length === 0 && !state.checked ? (
             <p className="text-xs text-stone-400 italic">All words placed</p>
           ) : (
             availableWords.map(w => (
@@ -174,7 +211,7 @@ export const FillInBlanks: React.FC<FillInBlanksProps> = ({ words, cachedExercis
                 draggable
                 onDragStart={() => handleDragStart(w.word)}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 cursor-grab active:cursor-grabbing ${
-                  selectedWord === w.word
+                  state.selectedWord === w.word
                     ? 'bg-[#1e1b4b] text-white shadow-md scale-105'
                     : 'bg-white text-slate-700 border border-stone-200 hover:border-indigo-300 hover:shadow-sm'
                 }`}
@@ -187,15 +224,15 @@ export const FillInBlanks: React.FC<FillInBlanksProps> = ({ words, cachedExercis
       </div>
 
       {/* Passage with Blanks */}
-      <div className="bg-white rounded-xl border border-stone-200 p-6 font-serif text-slate-700 text-base leading-loose">
+      <div className="bg-white rounded-xl border border-stone-200 p-6 font-serif text-slate-700 text-base leading-loose" key={`passage-${currentGroup}`}>
         {segments.map((seg, i) => {
           const blankMatch = seg.match(/__BLANK_(\d+)__/);
           if (!blankMatch) return <span key={i}>{seg}</span>;
 
           const blankIndex = parseInt(blankMatch[1]);
-          const placed = placedWords[blankIndex];
-          const isCorrect = checked && results[blankIndex] === true;
-          const isIncorrect = checked && results[blankIndex] === false;
+          const placed = state.placedWords[blankIndex];
+          const isCorrect = state.checked && state.results[blankIndex] === true;
+          const isIncorrect = state.checked && state.results[blankIndex] === false;
 
           return (
             <span
@@ -205,11 +242,11 @@ export const FillInBlanks: React.FC<FillInBlanksProps> = ({ words, cachedExercis
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, blankIndex)}
               className={`inline-flex items-center justify-center min-w-24 px-2 py-0.5 mx-1 rounded-md border-2 border-dashed cursor-pointer transition-all duration-200 font-sans text-sm font-medium ${
-                revealed ? 'border-indigo-300 bg-indigo-50 text-indigo-700 border-solid' :
+                state.revealed ? 'border-indigo-300 bg-indigo-50 text-indigo-700 border-solid' :
                 isCorrect ? 'border-emerald-400 bg-emerald-50 text-emerald-700 border-solid' :
                 isIncorrect ? 'border-red-400 bg-red-50 text-red-700 border-solid' :
                 placed ? 'border-indigo-300 bg-indigo-50 text-indigo-700 border-solid' :
-                selectedWord ? 'border-indigo-400 bg-indigo-50/50 text-stone-400 hover:bg-indigo-50' :
+                state.selectedWord ? 'border-indigo-400 bg-indigo-50/50 text-stone-400 hover:bg-indigo-50' :
                 'border-stone-300 bg-stone-50 text-stone-400 hover:border-stone-400'
               }`}
             >
@@ -222,14 +259,14 @@ export const FillInBlanks: React.FC<FillInBlanksProps> = ({ words, cachedExercis
       </div>
 
       {/* Show correct answers after checking */}
-      {checked && !allCorrect && (
+      {state.checked && !allCorrect && (
         <div className="mt-3 bg-amber-50 rounded-lg p-3 border border-amber-200">
           <p className="text-xs font-semibold text-amber-700 mb-1">Correct answers:</p>
           <p className="text-xs text-amber-600">
-            {answers.map((a, i) => (
+            {exercise.answers.map((a, i) => (
               <span key={i}>
                 {i > 0 && ', '}
-                <span className={results[i] ? 'text-emerald-600' : 'font-bold'}>{a}</span>
+                <span className={state.results[i] ? 'text-emerald-600' : 'font-bold'}>{a}</span>
               </span>
             ))}
           </p>
@@ -247,7 +284,7 @@ export const FillInBlanks: React.FC<FillInBlanksProps> = ({ words, cachedExercis
         </button>
 
         <div className="flex items-center gap-2">
-          {!revealed && !allCorrect && (
+          {!state.revealed && !allCorrect && (
             <button
               onClick={handleReveal}
               className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-stone-500 hover:text-stone-700 border border-stone-200 hover:border-stone-300 rounded-lg transition-colors"
@@ -257,7 +294,7 @@ export const FillInBlanks: React.FC<FillInBlanksProps> = ({ words, cachedExercis
             </button>
           )}
 
-          {revealed ? (
+          {state.revealed ? (
             <div className="flex items-center gap-2 text-sm font-semibold text-indigo-600 bg-indigo-50 px-4 py-2 rounded-lg">
               <Eye className="w-4 h-4" />
               Answers revealed
@@ -269,11 +306,11 @@ export const FillInBlanks: React.FC<FillInBlanksProps> = ({ words, cachedExercis
             </div>
           ) : (
             <button
-              onClick={checked ? handleReset : handleCheck}
+              onClick={state.checked ? handleReset : handleCheck}
               disabled={!allFilled}
               className="px-5 py-2 text-sm font-medium text-white bg-[#1e1b4b] hover:bg-indigo-800 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {checked ? 'Try Again' : 'Check Answers'}
+              {state.checked ? 'Try Again' : 'Check Answers'}
             </button>
           )}
         </div>

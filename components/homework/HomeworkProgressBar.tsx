@@ -6,7 +6,6 @@ import { BookOpen, Zap, Trophy, Check } from 'lucide-react';
 
 interface HomeworkProgressBarProps {
   currentPhase: HomeworkPhase;
-  score: number;
   allQuestionsCount: number;
   correctlyAnsweredCount: number;
   onPhaseClick?: (phase: HomeworkPhase) => void;
@@ -19,22 +18,21 @@ const PHASES: { key: HomeworkPhase; label: string; icon: React.ReactNode }[] = [
 
 export const HomeworkProgressBar: React.FC<HomeworkProgressBarProps> = ({
   currentPhase,
-  score,
   allQuestionsCount,
   correctlyAnsweredCount,
   onPhaseClick,
 }) => {
   const [animateBar, setAnimateBar] = useState(false);
-  const prevScoreRef = React.useRef(score);
+  const prevCountRef = React.useRef(correctlyAnsweredCount);
 
   useEffect(() => {
-    if (score !== prevScoreRef.current) {
-      prevScoreRef.current = score;
+    if (correctlyAnsweredCount !== prevCountRef.current) {
+      prevCountRef.current = correctlyAnsweredCount;
       setAnimateBar(true);
       const timer = setTimeout(() => setAnimateBar(false), 600);
       return () => clearTimeout(timer);
     }
-  }, [score]);
+  }, [correctlyAnsweredCount]);
 
   const isCompleted = currentPhase === 'completed';
   const progressPercent = allQuestionsCount > 0

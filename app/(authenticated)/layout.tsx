@@ -5,19 +5,9 @@ import { ProfileDropdown } from '@/components/ProfileDropdown';
 import { Library, FolderOpen, BookOpen, GraduationCap, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useUser } from '@clerk/nextjs';
-import { usePathname } from 'next/navigation';
-
-function getUserRole(user: any): string | null {
-  // Check localStorage first (matches ProfileDropdown behavior)
-  if (user?.id && typeof window !== 'undefined') {
-    const localRole = localStorage.getItem(`lingualift-user-role-${user.id}`);
-    if (localRole) return localRole;
-  }
-  // Fallback to Clerk publicMetadata
-  const clerkRole = (user?.publicMetadata as { role?: string })?.role;
-  if (clerkRole) return clerkRole;
-  return null;
-}
+import { usePathname, useRouter } from 'next/navigation';
+import { getUserRole } from '@/lib/getUserRole';
+import { useEffect } from 'react';
 
 function NavHeader() {
   const { user, isLoaded } = useUser();
@@ -104,13 +94,52 @@ function NavHeader() {
   );
 }
 
+const TEACHER_ROUTES = ['/generate', '/learn', '/sessions', '/students'];
+const STUDENT_ROUTES = ['/student'];
+
+function RouteGuard({ children }: { children: React.ReactNode }) {
+  const { user, isLoaded } = useUser();
+  const pathname = usePathname();
+  const router = useRouter();
+  const role = getUserRole(user);
+
+  useEffect(() => {
+    if (!isLoaded || !role) return;
+
+    if (role === 'student') {
+      const isTeacherRoute = TEACHER_ROUTES.some(r => pathname === r || pathname.startsWith(r + '/'));
+      if (isTeacherRoute) {
+        router.replace('/student/homework');
+      }
+    } else if (role === 'teacher') {
+      const isStudentRoute = STUDENT_ROUTES.some(r => pathname === r || pathname.startsWith(r + '/'));
+      if (isStudentRoute) {
+        router.replace('/generate');
+      }
+    }
+  }, [isLoaded, role, pathname, router]);
+
+  if (!isLoaded) return null;
+
+  // Don't render content for unauthorized routes while redirecting
+  if (role === 'student') {
+    const isTeacherRoute = TEACHER_ROUTES.some(r => pathname === r || pathname.startsWith(r + '/'));
+    if (isTeacherRoute) return null;
+  } else if (role === 'teacher') {
+    const isStudentRoute = STUDENT_ROUTES.some(r => pathname === r || pathname.startsWith(r + '/'));
+    if (isStudentRoute) return null;
+  }
+
+  return <>{children}</>;
+}
+
 export default function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   return (
     <LinguaLiftProvider>
       <div className="h-screen flex flex-col bg-[#f8f6f1] text-slate-900 font-sans selection:bg-indigo-200">
         <NavHeader />
         <main className="flex-1 overflow-hidden">
-          {children}
+          <RouteGuard>{children}</RouteGuard>
         </main>
       </div>
     </LinguaLiftProvider>

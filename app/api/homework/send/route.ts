@@ -1,8 +1,20 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { generateMCDefinitions, generateMCSynonyms, generateHomeworkSynonyms } from '@/lib/gemini';
-import { CollectedWord } from '@/types';
+import { generateMCDefinitions, generateMCSynonyms, generateHomeworkSynonyms, generateHomeworkFillInBlank } from '@/lib/gemini';
+import {
+  CollectedWord,
+  MCDefinitionQuestion,
+  MCSynonymQuestion,
+  SynonymGroup,
+  PracticeQuestion,
+  PassageFillExercise,
+  WordMatchingExercise,
+  SynonymBasketExercise,
+  GeneratedExercises,
+} from '@/types';
+
+// --- Helpers ---
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -12,6 +24,209 @@ function shuffle<T>(arr: T[]): T[] {
   }
   return a;
 }
+
+function escapeRegex(s: string) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function pickDistractors(allWords: string[], correctWord: string, count: number): string[] {
+  const others = allWords.filter(w => w.toLowerCase() !== correctWord.toLowerCase());
+  return shuffle(others).slice(0, count);
+}
+
+function partitionItems<T>(items: T[]): T[][] {
+  const shuffled = shuffle(items);
+  const n = shuffled.length;
+  if (n === 0) return [];
+  if (n <= 3) return [shuffled];
+
+  let numGroups: number;
+  if (n <= 10) numGroups = 2;
+  else if (n <= 20) numGroups = 3;
+  else numGroups = 4;
+
+  numGroups = Math.min(numGroups, n);
+  const baseSize = Math.floor(n / numGroups);
+  const remainder = n % numGroups;
+
+  const groups: T[][] = [];
+  let idx = 0;
+  for (let i = 0; i < numGroups; i++) {
+    const size = baseSize + (i < remainder ? 1 : 0);
+    groups.push(shuffled.slice(idx, idx + size));
+    idx += size;
+  }
+  return groups;
+}
+
+// --- Exercise Generators ---
+
+function buildPracticeQuestions(
+  mcDefinitions: MCDefinitionQuestion[],
+  mcSynonyms: MCSynonymQuestion[],
+  collectedWords: CollectedWord[],
+  synonymGroups: SynonymGroup[],
+): PracticeQuestion[] {
+  const questions: PracticeQuestion[] = [];
+  const allWordTexts = collectedWords.map(w => w.word);
+
+  // MC Definition
+  for (const q of mcDefinitions) {
+    const others = q.options.filter(o => o !== q.correctDefinition);
+    questions.push({
+      id: `${q.wordId}_mc_definition`,
+      wordId: q.wordId,
+      type: 'mc_definition',
+      prompt: q.word,
+      options: shuffle([q.correctDefinition, ...shuffle(others).slice(0, 3)]),
+      correctAnswer: q.correctDefinition,
+    });
+  }
+
+  // MC Synonym
+  for (const q of mcSynonyms) {
+    const others = q.options.filter(o => o !== q.correctSynonym);
+    questions.push({
+      id: `${q.wordId}_mc_synonym`,
+      wordId: q.wordId,
+      type: 'mc_synonym',
+      prompt: q.word,
+      options: shuffle([q.correctSynonym, ...shuffle(others).slice(0, 3)]),
+      correctAnswer: q.correctSynonym,
+    });
+  }
+
+  // Matching (definition → word)
+  for (const cw of collectedWords) {
+    const distractors = pickDistractors(allWordTexts, cw.word, 3);
+    questions.push({
+      id: `${cw.id}_matching`,
+      wordId: cw.id,
+      type: 'matching',
+      prompt: cw.meaning,
+      options: shuffle([cw.word, ...distractors]),
+      correctAnswer: cw.word,
+    });
+  }
+
+  // Fill-in-blank (from example sentence)
+  for (const cw of collectedWords) {
+    const regex = new RegExp(`\\b${escapeRegex(cw.word)}\\b`, 'gi');
+    const blanked = cw.exampleSentence.replace(regex, '______');
+    if (blanked !== cw.exampleSentence) {
+      const distractors = pickDistractors(allWordTexts, cw.word, 3);
+      questions.push({
+        id: `${cw.id}_fill_in_blank`,
+        wordId: cw.id,
+        type: 'fill_in_blank',
+        prompt: blanked,
+        options: shuffle([cw.word, ...distractors]),
+        correctAnswer: cw.word,
+      });
+    }
+  }
+
+  // Grouping (synonym → word)
+  const groupHeaders = synonymGroups.map(g => g.word);
+  if (groupHeaders.length >= 2) {
+    for (const group of synonymGroups) {
+      if (group.synonyms.length > 0) {
+        const synonym = group.synonyms[Math.floor(Math.random() * group.synonyms.length)];
+        const wordEntry = collectedWords.find(
+          w => w.word.toLowerCase() === group.word.toLowerCase()
+        );
+        const wordId = wordEntry?.id || group.word;
+        const distractorHeaders = groupHeaders.filter(h => h !== group.word);
+        const picked = shuffle(distractorHeaders).slice(0, 3);
+        questions.push({
+          id: `${wordId}_grouping`,
+          wordId,
+          type: 'grouping',
+          prompt: synonym,
+          options: shuffle([group.word, ...picked]),
+          correctAnswer: group.word,
+        });
+      }
+    }
+  }
+
+  return questions;
+}
+
+function buildWordMatchingExercises(words: CollectedWord[]): WordMatchingExercise[] {
+  const groups = partitionItems(words);
+  return groups.map((group, i) => ({
+    id: `word_matching_${i}`,
+    wordIds: group.map(w => w.id),
+    words: shuffle(group.map(w => ({ id: w.id, text: w.word }))),
+    definitions: shuffle(group.map(w => ({ id: w.id, text: w.meaning }))),
+  }));
+}
+
+function buildSynonymBasketExercises(synGroups: SynonymGroup[], collectedWords: CollectedWord[]): SynonymBasketExercise[] {
+  const validGroups = synGroups.filter(g => g.synonyms.length > 0);
+  if (validGroups.length < 2) return [];
+
+  const partitions = partitionItems(validGroups);
+
+  return partitions.map((partition, i) => {
+    const baskets = partition.map(g => {
+      const cw = collectedWords.find(w => w.word.toLowerCase() === g.word.toLowerCase());
+      return { id: cw?.id || g.word, word: g.word };
+    });
+
+    const synonymPool: { key: string; text: string; correctBasketId: string }[] = [];
+    partition.forEach(g => {
+      const cw = collectedWords.find(w => w.word.toLowerCase() === g.word.toLowerCase());
+      const basketId = cw?.id || g.word;
+      const syns = shuffle(g.synonyms).slice(0, Math.min(5, Math.max(3, g.synonyms.length)));
+      syns.forEach((syn, j) => {
+        synonymPool.push({
+          key: `${basketId}_syn_${j}`,
+          text: syn,
+          correctBasketId: basketId,
+        });
+      });
+    });
+
+    return {
+      id: `synonym_basket_${i}`,
+      wordIds: partition.map(g => {
+        const cw = collectedWords.find(w => w.word.toLowerCase() === g.word.toLowerCase());
+        return cw?.id || g.word;
+      }),
+      baskets,
+      synonymPool: shuffle(synonymPool),
+    };
+  });
+}
+
+async function buildPassageFillExercises(words: CollectedWord[], allWordTexts: string[]): Promise<PassageFillExercise[]> {
+  const groups = partitionItems(words);
+  const exercises: PassageFillExercise[] = [];
+
+  const results = await Promise.allSettled(
+    groups.map(async (group, i) => {
+      const wordTexts = group.map(w => w.word);
+      const result = await generateHomeworkFillInBlank(wordTexts);
+      return {
+        id: `passage_fill_${i}`,
+        wordIds: group.map(w => w.id),
+        passage: result.passage,
+        answers: result.answers,
+        wordBank: shuffle([...allWordTexts]),
+      } as PassageFillExercise;
+    })
+  );
+
+  for (const r of results) {
+    if (r.status === 'fulfilled') exercises.push(r.value);
+  }
+
+  return exercises;
+}
+
+// --- Route Handler ---
 
 export async function POST(request: Request) {
   try {
@@ -31,14 +246,31 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Generate all exercises in parallel
+    // Phase 1: Generate Gemini-powered data in parallel
     const [mcDefinitions, mcSynonyms, synonymGroups] = await Promise.all([
       generateMCDefinitions(collectedWords),
       generateMCSynonyms(collectedWords),
       generateHomeworkSynonyms(collectedWords.map(w => w.word)),
     ]);
 
-    // Prepare cross-matching data with shuffled order
+    // Phase 2: Build all exercises (passage fill calls Gemini too)
+    const allWordTexts = collectedWords.map(w => w.word);
+
+    const [practiceQuestions, wordMatchingExercises, synonymBasketExercises, passageFillExercises] = await Promise.all([
+      Promise.resolve(buildPracticeQuestions(mcDefinitions, mcSynonyms, collectedWords, synonymGroups)),
+      Promise.resolve(buildWordMatchingExercises(collectedWords)),
+      Promise.resolve(buildSynonymBasketExercises(synonymGroups, collectedWords)),
+      buildPassageFillExercises(collectedWords, allWordTexts),
+    ]);
+
+    const generatedExercises: GeneratedExercises = {
+      practiceQuestions,
+      passageFillExercises,
+      wordMatchingExercises,
+      synonymBasketExercises,
+    };
+
+    // Prepare cross-matching data (for teacher preview backward compat)
     const crossMatchingData = {
       words: shuffle(collectedWords.map(w => ({ id: w.id, text: w.word }))),
       definitions: shuffle(collectedWords.map(w => ({ id: w.id, text: w.meaning }))),
@@ -56,6 +288,7 @@ export async function POST(request: Request) {
         mc_synonyms: mcSynonyms,
         cross_matching_data: crossMatchingData,
         synonym_groups: { groups: synonymGroups },
+        generated_exercises: generatedExercises,
       })
       .select('id')
       .single();

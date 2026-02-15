@@ -8,7 +8,7 @@ import { HomeworkProgressBar } from '@/components/homework/HomeworkProgressBar';
 import { VocabReview } from '@/components/homework/VocabReview';
 import { PracticeSession } from '@/components/homework/PracticeSession';
 import { CompletionScreen } from '@/components/homework/CompletionScreen';
-import { Loader2, LogOut } from 'lucide-react';
+import { Loader2, LogOut, Bug } from 'lucide-react';
 
 const PHASE_ORDER: HomeworkPhase[] = ['vocab_review', 'practice', 'completed'];
 
@@ -20,7 +20,6 @@ export default function HomeworkSessionPage() {
   const [assignment, setAssignment] = useState<HomeworkAssignment | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentPhase, setCurrentPhase] = useState<HomeworkPhase>('vocab_review');
-  const [score, setScore] = useState(0);
   const [exercisesCompleted, setExercisesCompleted] = useState<string[]>([]);
   const [answersGiven, setAnswersGiven] = useState<Record<string, any>>({});
 
@@ -50,7 +49,6 @@ export default function HomeworkSessionPage() {
             // Old phase (mc_definitions, mc_synonyms, etc.) → start practice fresh
             setCurrentPhase('practice');
           }
-          setScore(progress.score);
           setExercisesCompleted(progress.exercises_completed as string[]);
           setAnswersGiven(progress.answers_given as Record<string, any>);
 
@@ -76,12 +74,11 @@ export default function HomeworkSessionPage() {
 
   // Debounced save
   const debouncedSave = useCallback(
-    (phase: HomeworkPhase, s: number, completed: string[], answers: Record<string, any>) => {
+    (phase: HomeworkPhase, completed: string[], answers: Record<string, any>) => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = setTimeout(() => {
         saveHomeworkProgress(id, {
           currentPhase: phase,
-          score: s,
           exercisesCompleted: completed,
           answersGiven: answers,
         }).catch(console.error);
@@ -99,7 +96,6 @@ export default function HomeworkSessionPage() {
         new Blob(
           [JSON.stringify({
             currentPhase,
-            score,
             exercisesCompleted,
             answersGiven,
           })],
@@ -109,7 +105,7 @@ export default function HomeworkSessionPage() {
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [id, currentPhase, score, exercisesCompleted, answersGiven]);
+  }, [id, currentPhase, exercisesCompleted, answersGiven]);
 
   const advancePhase = useCallback((completedPhase: HomeworkPhase) => {
     const currentIdx = PHASE_ORDER.indexOf(completedPhase);
@@ -118,16 +114,8 @@ export default function HomeworkSessionPage() {
     const newCompleted = [...exercisesCompleted, completedPhase];
     setExercisesCompleted(newCompleted);
     setCurrentPhase(nextPhase);
-
-    setScore(prevScore => {
-      debouncedSave(nextPhase, prevScore, newCompleted, answersGiven);
-      return prevScore;
-    });
+    debouncedSave(nextPhase, newCompleted, answersGiven);
   }, [exercisesCompleted, answersGiven, debouncedSave]);
-
-  const handlePracticeScoreChange = useCallback((newScore: number) => {
-    setScore(newScore);
-  }, []);
 
   const handlePracticeStateChange = useCallback((state: PracticeSessionState) => {
     const total = state.allQuestions.length
@@ -139,37 +127,35 @@ export default function HomeworkSessionPage() {
 
     setAnswersGiven(prev => {
       const updated = { ...prev, practice: state };
-      debouncedSave('practice', state.score, exercisesCompleted, updated);
+      debouncedSave('practice', exercisesCompleted, updated);
       return updated;
     });
   }, [exercisesCompleted, debouncedSave]);
 
-  const handlePracticeComplete = useCallback((finalScore: number) => {
-    setScore(finalScore);
+  const handlePracticeComplete = useCallback(() => {
     const newCompleted = [...exercisesCompleted, 'practice'];
     setExercisesCompleted(newCompleted);
     setCurrentPhase('completed');
-    debouncedSave('completed', finalScore, newCompleted, answersGiven);
+    debouncedSave('completed', newCompleted, answersGiven);
   }, [exercisesCompleted, answersGiven, debouncedSave]);
 
   const handlePhaseClick = useCallback((phase: HomeworkPhase) => {
     if (phase === currentPhase) return;
     setCurrentPhase(phase);
-    debouncedSave(phase, score, exercisesCompleted, answersGiven);
-  }, [currentPhase, score, exercisesCompleted, answersGiven, debouncedSave]);
+    debouncedSave(phase, exercisesCompleted, answersGiven);
+  }, [currentPhase, exercisesCompleted, answersGiven, debouncedSave]);
 
   const handleExit = useCallback(() => {
     // Flush any pending save immediately
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveHomeworkProgress(id, {
       currentPhase,
-      score,
       exercisesCompleted,
       answersGiven,
     }).catch(console.error).finally(() => {
       router.push('/student/homework');
     });
-  }, [id, currentPhase, score, exercisesCompleted, answersGiven, router]);
+  }, [id, currentPhase, exercisesCompleted, answersGiven, router]);
 
   if (loading) {
     return (
@@ -189,20 +175,35 @@ export default function HomeworkSessionPage() {
       <div className="relative">
         <HomeworkProgressBar
           currentPhase={currentPhase}
-          score={score}
           allQuestionsCount={totalQuestions}
           correctlyAnsweredCount={correctCount}
           onPhaseClick={handlePhaseClick}
         />
         {currentPhase !== 'completed' && (
-          <button
-            onClick={handleExit}
-            className="absolute top-4 right-5 lg:right-8 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-stone-400 hover:text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors"
-            title="Save and exit"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            Exit
-          </button>
+          <>
+            <button
+              onClick={handleExit}
+              className="absolute top-4 left-5 lg:left-8 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-stone-400 hover:text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors"
+              title="Save and exit"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              Exit
+            </button>
+            <button
+              onClick={() => {
+                if (currentPhase === 'vocab_review') {
+                  advancePhase('vocab_review');
+                } else if (currentPhase === 'practice') {
+                  handlePracticeComplete();
+                }
+              }}
+              className="absolute top-4 right-5 lg:right-8 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-orange-500 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-lg transition-colors"
+              title="Debug: skip to next phase"
+            >
+              <Bug className="w-3.5 h-3.5" />
+              Skip
+            </button>
+          </>
         )}
       </div>
 
@@ -218,7 +219,6 @@ export default function HomeworkSessionPage() {
           <PracticeSession
             assignment={assignment}
             savedState={answersGiven.practice || null}
-            onScoreChange={handlePracticeScoreChange}
             onStateChange={handlePracticeStateChange}
             onComplete={handlePracticeComplete}
           />
@@ -226,7 +226,6 @@ export default function HomeworkSessionPage() {
 
         {currentPhase === 'completed' && (
           <CompletionScreen
-            score={score}
             totalWords={assignment.collected_words.length}
           />
         )}

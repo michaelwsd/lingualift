@@ -3,12 +3,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { CollectedWord, SynonymExercise } from '@/types';
 import { generateSynonyms } from '@/services/api';
-import { Loader2, Check, X, RotateCcw, Eye } from 'lucide-react';
+import { Loader2, Check, X, RotateCcw, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface SynonymGroupingProps {
-  words: CollectedWord[];
-  cachedExercise: SynonymExercise | null;
-  onExerciseGenerated: (exercise: SynonymExercise) => void;
+  wordGroups: CollectedWord[][];
+  cachedExercises: SynonymExercise[] | null;
+  onExerciseGenerated: (groupIndex: number, exercise: SynonymExercise) => void;
 }
 
 const BASKET_COLORS = [
@@ -33,42 +33,69 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-export const SynonymGrouping: React.FC<SynonymGroupingProps> = ({ words, cachedExercise, onExerciseGenerated }) => {
-  const [exercise, setExercise] = useState<SynonymExercise | null>(cachedExercise);
-  const [isLoading, setIsLoading] = useState(!cachedExercise);
-  // placements: synonymKey -> basketIndex (which word basket it's in)
-  const [placements, setPlacements] = useState<Record<string, number>>({});
-  const [draggedSynonym, setDraggedSynonym] = useState<string | null>(null);
-  const [selectedSynonym, setSelectedSynonym] = useState<string | null>(null);
-  const [checked, setChecked] = useState(false);
-  const [results, setResults] = useState<Record<string, boolean>>({});
-  const [revealed, setRevealed] = useState(false);
+interface GroupState {
+  placements: Record<string, number>;
+  selectedSynonym: string | null;
+  draggedSynonym: string | null;
+  checked: boolean;
+  results: Record<string, boolean>;
+  revealed: boolean;
+}
 
-  const loadExercise = useCallback(async () => {
-    setIsLoading(true);
-    setChecked(false);
-    setRevealed(false);
-    setResults({});
-    setPlacements({});
-    setSelectedSynonym(null);
+const emptyGroupState = (): GroupState => ({
+  placements: {},
+  selectedSynonym: null,
+  draggedSynonym: null,
+  checked: false,
+  results: {},
+  revealed: false,
+});
+
+export const SynonymGrouping: React.FC<SynonymGroupingProps> = ({ wordGroups, cachedExercises, onExerciseGenerated }) => {
+  const [currentGroup, setCurrentGroup] = useState(0);
+  const [exercises, setExercises] = useState<Record<number, SynonymExercise>>(() => {
+    if (!cachedExercises) return {};
+    const map: Record<number, SynonymExercise> = {};
+    cachedExercises.forEach((e, i) => { map[i] = e; });
+    return map;
+  });
+  const [loading, setLoading] = useState<Record<number, boolean>>({});
+  const [groupStates, setGroupStates] = useState<Record<number, GroupState>>({});
+
+  const exercise = exercises[currentGroup] || null;
+  const isLoading = loading[currentGroup] || false;
+  const state = groupStates[currentGroup] || emptyGroupState();
+
+  const updateState = useCallback((patch: Partial<GroupState>) => {
+    setGroupStates(prev => ({
+      ...prev,
+      [currentGroup]: { ...(prev[currentGroup] || emptyGroupState()), ...patch },
+    }));
+  }, [currentGroup]);
+
+  const loadExercise = useCallback(async (groupIdx: number) => {
+    if (exercises[groupIdx]) return;
+    setLoading(prev => ({ ...prev, [groupIdx]: true }));
     try {
+      const words = wordGroups[groupIdx];
       const wordTexts = words.map(w => w.word);
       const result = await generateSynonyms(wordTexts);
-      setExercise(result);
-      onExerciseGenerated(result);
+      setExercises(prev => ({ ...prev, [groupIdx]: result }));
+      onExerciseGenerated(groupIdx, result);
     } catch (error) {
       console.error('Failed to generate synonyms:', error);
     } finally {
-      setIsLoading(false);
+      setLoading(prev => ({ ...prev, [groupIdx]: false }));
     }
-  }, [words, onExerciseGenerated]);
+  }, [wordGroups, exercises, onExerciseGenerated]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Load current group's exercise on mount or group change
   useEffect(() => {
-    if (!cachedExercise && words.length > 0) loadExercise();
-  }, []);
+    if (!exercises[currentGroup]) {
+      loadExercise(currentGroup);
+    }
+  }, [currentGroup, exercises, loadExercise]);
 
-  // Build a flat shuffled list of all synonyms with their correct group index
   const allSynonyms = useMemo(() => {
     if (!exercise) return [];
     const items: { key: string; text: string; correctGroup: number }[] = [];
@@ -78,34 +105,33 @@ export const SynonymGrouping: React.FC<SynonymGroupingProps> = ({ words, cachedE
       });
     });
     return shuffle(items);
-  }, [exercise]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exercise, currentGroup]);
 
-  // Synonyms not yet placed in any basket
-  const unplacedSynonyms = allSynonyms.filter(s => placements[s.key] === undefined);
+  const unplacedSynonyms = allSynonyms.filter(s => state.placements[s.key] === undefined);
 
   const handleSynonymClick = (key: string) => {
-    if (checked || revealed) return;
-    setSelectedSynonym(selectedSynonym === key ? null : key);
+    if (state.checked || state.revealed) return;
+    updateState({ selectedSynonym: state.selectedSynonym === key ? null : key });
   };
 
   const handleBasketClick = (basketIndex: number) => {
-    if (checked || revealed || !selectedSynonym) return;
-    setPlacements(prev => ({ ...prev, [selectedSynonym]: basketIndex }));
-    setSelectedSynonym(null);
-  };
-
-  const handleRemoveFromBasket = (key: string) => {
-    if (checked || revealed) return;
-    setPlacements(prev => {
-      const next = { ...prev };
-      delete next[key];
-      return next;
+    if (state.checked || state.revealed || !state.selectedSynonym) return;
+    updateState({
+      placements: { ...state.placements, [state.selectedSynonym]: basketIndex },
+      selectedSynonym: null,
     });
   };
 
-  // Drag handlers
+  const handleRemoveFromBasket = (key: string) => {
+    if (state.checked || state.revealed) return;
+    const next = { ...state.placements };
+    delete next[key];
+    updateState({ placements: next });
+  };
+
   const handleDragStart = (key: string) => {
-    setDraggedSynonym(key);
+    updateState({ draggedSynonym: key });
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -120,43 +146,34 @@ export const SynonymGrouping: React.FC<SynonymGroupingProps> = ({ words, cachedE
   const handleDrop = (e: React.DragEvent, basketIndex: number) => {
     e.preventDefault();
     (e.currentTarget as HTMLElement).classList.remove('drag-over');
-    if (checked || revealed || !draggedSynonym) return;
-    setPlacements(prev => ({ ...prev, [draggedSynonym]: basketIndex }));
-    setDraggedSynonym(null);
+    if (state.checked || state.revealed || !state.draggedSynonym) return;
+    updateState({
+      placements: { ...state.placements, [state.draggedSynonym]: basketIndex },
+      draggedSynonym: null,
+    });
   };
 
   const handleCheck = () => {
     const newResults: Record<string, boolean> = {};
     allSynonyms.forEach(syn => {
-      const placed = placements[syn.key];
-      newResults[syn.key] = placed === syn.correctGroup;
+      newResults[syn.key] = state.placements[syn.key] === syn.correctGroup;
     });
-    setResults(newResults);
-    setChecked(true);
+    updateState({ results: newResults, checked: true });
   };
 
   const handleReveal = () => {
-    // Place all synonyms in their correct baskets
     const correct: Record<string, number> = {};
-    allSynonyms.forEach(syn => {
-      correct[syn.key] = syn.correctGroup;
-    });
-    setPlacements(correct);
-    setRevealed(true);
-    setChecked(false);
-    setResults({});
+    allSynonyms.forEach(syn => { correct[syn.key] = syn.correctGroup; });
+    updateState({ placements: correct, revealed: true, checked: false, results: {}, selectedSynonym: null });
   };
 
   const handleReset = () => {
-    setPlacements({});
-    setSelectedSynonym(null);
-    setChecked(false);
-    setResults({});
-    setRevealed(false);
+    updateState(emptyGroupState());
   };
 
-  const allPlaced = Object.keys(placements).length === allSynonyms.length;
-  const allCorrect = checked && Object.values(results).every(v => v);
+  const allPlaced = Object.keys(state.placements).length === allSynonyms.length;
+  const allCorrect = state.checked && Object.values(state.results).every(v => v);
+  const totalGroups = wordGroups.length;
 
   if (isLoading) {
     return (
@@ -175,14 +192,37 @@ export const SynonymGrouping: React.FC<SynonymGroupingProps> = ({ words, cachedE
     <div>
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-base font-bold text-slate-800 font-serif">Synonym Grouping</h3>
-        <p className="text-xs text-stone-400">Drag synonyms into the correct word basket</p>
+        <div className="flex items-center gap-2">
+          {totalGroups > 1 && (
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setCurrentGroup(g => g - 1)}
+                disabled={currentGroup === 0}
+                className="p-1 rounded-md hover:bg-stone-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4 text-stone-500" />
+              </button>
+              <span className="text-xs font-medium text-stone-400 min-w-12 text-center">
+                {currentGroup + 1} of {totalGroups}
+              </span>
+              <button
+                onClick={() => setCurrentGroup(g => g + 1)}
+                disabled={currentGroup === totalGroups - 1}
+                className="p-1 rounded-md hover:bg-stone-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+              >
+                <ChevronRight className="w-4 h-4 text-stone-500" />
+              </button>
+            </div>
+          )}
+          <p className="text-xs text-stone-400">Drag synonyms into the correct word basket</p>
+        </div>
       </div>
 
       {/* Synonym Pool */}
-      <div className="mb-5">
+      <div className="mb-5" key={currentGroup}>
         <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-2">Synonyms</p>
-        <div className="flex flex-wrap gap-2 min-h-[40px] bg-stone-50 rounded-lg p-3 border border-stone-200">
-          {unplacedSynonyms.length === 0 && !revealed ? (
+        <div className="flex flex-wrap gap-2 min-h-10 bg-stone-50 rounded-lg p-3 border border-stone-200">
+          {unplacedSynonyms.length === 0 && !state.revealed ? (
             <p className="text-xs text-stone-400 italic">All synonyms placed</p>
           ) : (
             unplacedSynonyms.map(syn => (
@@ -192,7 +232,7 @@ export const SynonymGrouping: React.FC<SynonymGroupingProps> = ({ words, cachedE
                 draggable
                 onDragStart={() => handleDragStart(syn.key)}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 cursor-grab active:cursor-grabbing ${
-                  selectedSynonym === syn.key
+                  state.selectedSynonym === syn.key
                     ? 'bg-[#1e1b4b] text-white shadow-md scale-105'
                     : 'bg-white text-slate-700 border border-stone-200 hover:border-indigo-300 hover:shadow-sm'
                 }`}
@@ -205,10 +245,10 @@ export const SynonymGrouping: React.FC<SynonymGroupingProps> = ({ words, cachedE
       </div>
 
       {/* Baskets */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3" key={`baskets-${currentGroup}`}>
         {exercise.groups.map((group, gi) => {
           const color = BASKET_COLORS[gi % BASKET_COLORS.length];
-          const basketSynonyms = allSynonyms.filter(s => placements[s.key] === gi);
+          const basketSynonyms = allSynonyms.filter(s => state.placements[s.key] === gi);
 
           return (
             <div
@@ -218,29 +258,29 @@ export const SynonymGrouping: React.FC<SynonymGroupingProps> = ({ words, cachedE
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, gi)}
               className={`rounded-xl border-2 ${color.border} ${color.bg} transition-all duration-200 ${
-                selectedSynonym ? 'ring-2 ring-indigo-200 hover:ring-indigo-400' : ''
-              } ${revealed ? 'opacity-90' : ''}`}
+                state.selectedSynonym ? 'ring-2 ring-indigo-200 hover:ring-indigo-400' : ''
+              } ${state.revealed ? 'opacity-90' : ''}`}
             >
               <div className={`px-3 py-2 rounded-t-[10px] ${color.header} text-xs font-bold capitalize text-center`}>
                 {group.word}
               </div>
-              <div className="p-3 min-h-[60px] flex flex-wrap gap-1.5 items-start">
+              <div className="p-3 min-h-15 flex flex-wrap gap-1.5 items-start">
                 {basketSynonyms.length === 0 ? (
                   <p className="text-[10px] text-stone-400 italic w-full text-center py-2">Drop synonyms here</p>
                 ) : (
                   basketSynonyms.map(syn => {
-                    const isCorrect = checked && results[syn.key] === true;
-                    const isIncorrect = checked && results[syn.key] === false;
+                    const isCorrect = state.checked && state.results[syn.key] === true;
+                    const isIncorrect = state.checked && state.results[syn.key] === false;
 
                     return (
                       <button
                         key={syn.key}
                         onClick={(e) => { e.stopPropagation(); handleRemoveFromBasket(syn.key); }}
-                        disabled={checked || revealed}
+                        disabled={state.checked || state.revealed}
                         className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium border transition-all ${
                           isCorrect ? 'bg-emerald-100 text-emerald-700 border-emerald-300' :
                           isIncorrect ? 'bg-red-100 text-red-700 border-red-300' :
-                          revealed ? `${color.tag} border` :
+                          state.revealed ? `${color.tag} border` :
                           `${color.tag} border hover:opacity-80`
                         }`}
                       >
@@ -268,7 +308,7 @@ export const SynonymGrouping: React.FC<SynonymGroupingProps> = ({ words, cachedE
         </button>
 
         <div className="flex items-center gap-2">
-          {!revealed && !allCorrect && (
+          {!state.revealed && !allCorrect && (
             <button
               onClick={handleReveal}
               className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-stone-500 hover:text-stone-700 border border-stone-200 hover:border-stone-300 rounded-lg transition-colors"
@@ -278,7 +318,7 @@ export const SynonymGrouping: React.FC<SynonymGroupingProps> = ({ words, cachedE
             </button>
           )}
 
-          {revealed ? (
+          {state.revealed ? (
             <div className="flex items-center gap-2 text-sm font-semibold text-indigo-600 bg-indigo-50 px-4 py-2 rounded-lg">
               <Eye className="w-4 h-4" />
               Answers revealed
@@ -290,11 +330,11 @@ export const SynonymGrouping: React.FC<SynonymGroupingProps> = ({ words, cachedE
             </div>
           ) : (
             <button
-              onClick={checked ? handleReset : handleCheck}
+              onClick={state.checked ? handleReset : handleCheck}
               disabled={!allPlaced}
               className="px-5 py-2 text-sm font-medium text-white bg-[#1e1b4b] hover:bg-indigo-800 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {checked ? 'Try Again' : 'Check Answers'}
+              {state.checked ? 'Try Again' : 'Check Answers'}
             </button>
           )}
         </div>

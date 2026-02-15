@@ -13,7 +13,7 @@ export async function POST(
     }
 
     const { id } = await params;
-    const { currentPhase, score, exercisesCompleted, answersGiven } = await request.json();
+    const { currentPhase, exercisesCompleted, answersGiven } = await request.json();
 
     // Upsert progress
     const { error: progressError } = await supabaseAdmin
@@ -23,7 +23,6 @@ export async function POST(
           homework_id: id,
           student_id: userId,
           current_phase: currentPhase,
-          score,
           exercises_completed: exercisesCompleted,
           answers_given: answersGiven,
           updated_at: new Date().toISOString(),

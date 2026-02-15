@@ -1,16 +1,25 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { CollectedWord } from '@/types';
-import { Check, X, RotateCcw, Eye } from 'lucide-react';
+import { Check, X, RotateCcw, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface CrossMatchingProps {
-  words: CollectedWord[];
+  wordGroups: CollectedWord[][];
 }
 
 interface MatchPair {
   wordId: string;
   defId: string;
+}
+
+interface GroupState {
+  matches: MatchPair[];
+  selectedWord: string | null;
+  selectedDef: string | null;
+  checked: boolean;
+  results: Record<string, boolean>;
+  revealed: boolean;
 }
 
 const PAIR_COLORS = [
@@ -35,20 +44,37 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-export const CrossMatching: React.FC<CrossMatchingProps> = ({ words }) => {
-  const [matches, setMatches] = useState<MatchPair[]>([]);
-  const [selectedWord, setSelectedWord] = useState<string | null>(null);
-  const [selectedDef, setSelectedDef] = useState<string | null>(null);
-  const [checked, setChecked] = useState(false);
-  const [results, setResults] = useState<Record<string, boolean>>({});
-  const [revealed, setRevealed] = useState(false);
+const emptyGroupState = (): GroupState => ({
+  matches: [],
+  selectedWord: null,
+  selectedDef: null,
+  checked: false,
+  results: {},
+  revealed: false,
+});
 
-  const shuffledWords = useMemo(() => shuffle(words.map(w => ({ id: w.id, text: w.word }))), [words]);
-  const shuffledDefs = useMemo(() => shuffle(words.map(w => ({ id: w.id, text: w.meaning }))), [words]);
+export const CrossMatching: React.FC<CrossMatchingProps> = ({ wordGroups }) => {
+  const [currentGroup, setCurrentGroup] = useState(0);
+  const [groupStates, setGroupStates] = useState<Record<number, GroupState>>({});
+
+  const words = wordGroups[currentGroup];
+  const state = groupStates[currentGroup] || emptyGroupState();
+  const { matches, selectedWord, selectedDef, checked, results, revealed } = state;
+
+  const updateState = useCallback((patch: Partial<GroupState>) => {
+    setGroupStates(prev => ({
+      ...prev,
+      [currentGroup]: { ...(prev[currentGroup] || emptyGroupState()), ...patch },
+    }));
+  }, [currentGroup]);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const shuffledWords = useMemo(() => shuffle(words.map(w => ({ id: w.id, text: w.word }))), [currentGroup, words]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const shuffledDefs = useMemo(() => shuffle(words.map(w => ({ id: w.id, text: w.meaning }))), [currentGroup, words]);
 
   const getMatchForWord = (wordId: string) => matches.find(m => m.wordId === wordId);
   const getMatchForDef = (defId: string) => matches.find(m => m.defId === defId);
-
   const getColorIndex = (wordId: string) => {
     const idx = matches.findIndex(m => m.wordId === wordId);
     return idx >= 0 ? idx % PAIR_COLORS.length : -1;
@@ -58,16 +84,15 @@ export const CrossMatching: React.FC<CrossMatchingProps> = ({ words }) => {
     if (checked || revealed) return;
     const existing = getMatchForWord(wordId);
     if (existing) {
-      setMatches(prev => prev.filter(m => m.wordId !== wordId));
+      updateState({ matches: matches.filter(m => m.wordId !== wordId), selectedWord: null });
       return;
     }
-    setSelectedWord(wordId);
     if (selectedDef) {
       const existingDef = getMatchForDef(selectedDef);
-      if (existingDef) setMatches(prev => prev.filter(m => m.defId !== selectedDef));
-      setMatches(prev => [...prev, { wordId, defId: selectedDef }]);
-      setSelectedWord(null);
-      setSelectedDef(null);
+      const newMatches = existingDef ? matches.filter(m => m.defId !== selectedDef) : [...matches];
+      updateState({ matches: [...newMatches, { wordId, defId: selectedDef }], selectedWord: null, selectedDef: null });
+    } else {
+      updateState({ selectedWord: wordId });
     }
   };
 
@@ -75,57 +100,73 @@ export const CrossMatching: React.FC<CrossMatchingProps> = ({ words }) => {
     if (checked || revealed) return;
     const existing = getMatchForDef(defId);
     if (existing) {
-      setMatches(prev => prev.filter(m => m.defId !== defId));
+      updateState({ matches: matches.filter(m => m.defId !== defId), selectedDef: null });
       return;
     }
-    setSelectedDef(defId);
     if (selectedWord) {
       const existingWord = getMatchForWord(selectedWord);
-      if (existingWord) setMatches(prev => prev.filter(m => m.wordId !== selectedWord));
-      setMatches(prev => [...prev, { wordId: selectedWord, defId }]);
-      setSelectedWord(null);
-      setSelectedDef(null);
+      const newMatches = existingWord ? matches.filter(m => m.wordId !== selectedWord) : [...matches];
+      updateState({ matches: [...newMatches, { wordId: selectedWord, defId }], selectedWord: null, selectedDef: null });
+    } else {
+      updateState({ selectedDef: defId });
     }
   };
 
   const handleCheck = () => {
     const newResults: Record<string, boolean> = {};
-    matches.forEach(m => {
-      newResults[m.wordId] = m.wordId === m.defId;
-    });
-    setResults(newResults);
-    setChecked(true);
+    matches.forEach(m => { newResults[m.wordId] = m.wordId === m.defId; });
+    updateState({ results: newResults, checked: true });
   };
 
   const handleReveal = () => {
-    const correctMatches = words.map(w => ({ wordId: w.id, defId: w.id }));
-    setMatches(correctMatches);
-    setRevealed(true);
-    setChecked(false);
-    setResults({});
-    setSelectedWord(null);
-    setSelectedDef(null);
+    updateState({
+      matches: words.map(w => ({ wordId: w.id, defId: w.id })),
+      revealed: true,
+      checked: false,
+      results: {},
+      selectedWord: null,
+      selectedDef: null,
+    });
   };
 
   const handleReset = () => {
-    setMatches([]);
-    setSelectedWord(null);
-    setSelectedDef(null);
-    setChecked(false);
-    setResults({});
-    setRevealed(false);
+    updateState(emptyGroupState());
   };
 
   const allCorrect = checked && Object.values(results).every(v => v) && matches.length === words.length;
+  const totalGroups = wordGroups.length;
 
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-base font-bold text-slate-800 font-serif">Word Matching</h3>
-        <p className="text-xs text-stone-400">Click a word, then click its definition</p>
+        <div className="flex items-center gap-2">
+          {totalGroups > 1 && (
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setCurrentGroup(g => g - 1)}
+                disabled={currentGroup === 0}
+                className="p-1 rounded-md hover:bg-stone-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4 text-stone-500" />
+              </button>
+              <span className="text-xs font-medium text-stone-400 min-w-12 text-center">
+                {currentGroup + 1} of {totalGroups}
+              </span>
+              <button
+                onClick={() => setCurrentGroup(g => g + 1)}
+                disabled={currentGroup === totalGroups - 1}
+                className="p-1 rounded-md hover:bg-stone-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+              >
+                <ChevronRight className="w-4 h-4 text-stone-500" />
+              </button>
+            </div>
+          )}
+          <p className="text-xs text-stone-400">Click a word, then click its definition</p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-4" key={currentGroup}>
         {/* Words Column */}
         <div className="space-y-2">
           <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-2">Words</p>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { fetchMyStudents, StudentItem } from '@/services/api';
+import { fetchStudents, StudentItem } from '@/services/api';
 import { Users, ChevronRight, Loader2 } from 'lucide-react';
 
 export default function StudentsPage() {
@@ -11,7 +11,7 @@ export default function StudentsPage() {
   const router = useRouter();
 
   useEffect(() => {
-    fetchMyStudents()
+    fetchStudents()
       .then(setStudents)
       .catch(() => setStudents([]))
       .finally(() => setLoading(false));

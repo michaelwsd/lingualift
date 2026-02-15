@@ -7,7 +7,7 @@ import { StageIndicator } from '@/components/learning/StageIndicator';
 import { PassageStage } from '@/components/learning/PassageStage';
 import { ComprehensionStage } from '@/components/learning/ComprehensionStage';
 import { PracticeStage } from '@/components/learning/PracticeStage';
-import { SavedSession, Passage, CollectedWord } from '@/types';
+import { SavedSession, Passage, CollectedWord, FillInBlankExercise, SynonymExercise } from '@/types';
 import { ChevronLeft, ChevronRight, RotateCcw, BookOpen, Brain, Puzzle, Save, Check, LogOut, GraduationCap } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
@@ -20,7 +20,7 @@ const STAGES = [
 const SESSIONS_KEY = 'lingualift-sessions';
 
 export default function LearnPage() {
-  const { passage, collectedWords, addCollectedWord, removeCollectedWord, setPassage, clearCollectedWords, fillInBlankExercise, setFillInBlankExercise, synonymExercise, setSynonymExercise, currentSessionId } = useLinguaLift();
+  const { passage, collectedWords, addCollectedWord, removeCollectedWord, setPassage, clearCollectedWords, fillInBlankExercises, setFillInBlankExercises, synonymExercises, setSynonymExercises, currentSessionId } = useLinguaLift();
   const router = useRouter();
   const [stage, setStage] = useState(0);
   const [direction, setDirection] = useState<'forward' | 'backward'>('forward');
@@ -64,8 +64,8 @@ export default function LearnPage() {
       savedAt: Date.now(),
       passage,
       collectedWords,
-      fillInBlankExercise,
-      synonymExercise,
+      fillInBlankExercises,
+      synonymExercises,
     };
 
     const existing = JSON.parse(localStorage.getItem(SESSIONS_KEY) || '[]') as SavedSession[];
@@ -84,12 +84,7 @@ export default function LearnPage() {
     localStorage.setItem(SESSIONS_KEY, JSON.stringify(existing));
 
     setShowSaved(true);
-    setTimeout(() => {
-      setShowSaved(false);
-      setPassage(null);
-      clearCollectedWords();
-      router.push('/generate');
-    }, 1200);
+    setTimeout(() => setShowSaved(false), 1200);
   };
 
   const handleExit = () => {
@@ -136,10 +131,22 @@ export default function LearnPage() {
             <PracticeStage
               collectedWords={collectedWords}
               onGoBack={() => { setDirection('backward'); setStage(0); }}
-              fillInBlankExercise={fillInBlankExercise}
-              onFillInBlankGenerated={setFillInBlankExercise}
-              synonymExercise={synonymExercise}
-              onSynonymGenerated={setSynonymExercise}
+              fillInBlankExercises={fillInBlankExercises}
+              onFillInBlankGenerated={(groupIndex, exercise) => {
+                setFillInBlankExercises(prev => {
+                  const arr = prev ? [...prev] : [];
+                  arr[groupIndex] = exercise;
+                  return arr;
+                });
+              }}
+              synonymExercises={synonymExercises}
+              onSynonymGenerated={(groupIndex, exercise) => {
+                setSynonymExercises(prev => {
+                  const arr = prev ? [...prev] : [];
+                  arr[groupIndex] = exercise;
+                  return arr;
+                });
+              }}
             />
           )}
         </div>

@@ -5,18 +5,12 @@ import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { Library, GraduationCap, BookOpen, Lock, ArrowRight } from 'lucide-react';
 
-const ADMIN_PASSWORD_KEY = 'lingualift-admin-password';
-const DEFAULT_ADMIN_PASSWORD = 'admin1234';
-
-function getAdminPassword() {
-  return localStorage.getItem(ADMIN_PASSWORD_KEY) || DEFAULT_ADMIN_PASSWORD;
-}
-
 export default function ChooseRolePage() {
   const { user, isLoaded } = useUser();
   const router = useRouter();
   const [selectedRole, setSelectedRole] = useState<'student' | 'teacher' | null>(null);
   const [adminPassword, setAdminPassword] = useState('');
+  const [storedPassword, setStoredPassword] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [checking, setChecking] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -34,11 +28,18 @@ export default function ChooseRolePage() {
     }
   }, [isLoaded, user, router]);
 
+  useEffect(() => {
+    fetch('/api/admin-password')
+      .then(res => res.json())
+      .then(data => setStoredPassword(data.password))
+      .catch(() => setStoredPassword('admin1234'));
+  }, []);
+
   const handleContinue = async () => {
     if (!user || !selectedRole || submitting) return;
 
     if (selectedRole === 'teacher') {
-      if (adminPassword !== getAdminPassword()) {
+      if (adminPassword !== storedPassword) {
         setError('Incorrect admin password');
         return;
       }
@@ -148,7 +149,7 @@ export default function ChooseRolePage() {
         {/* Continue button */}
         <button
           onClick={handleContinue}
-          disabled={!selectedRole || (selectedRole === 'teacher' && !adminPassword) || submitting}
+          disabled={!selectedRole || (selectedRole === 'teacher' && (!adminPassword || storedPassword === null)) || submitting}
           className="w-full py-3 bg-indigo-900 hover:bg-indigo-800 disabled:bg-stone-300 disabled:cursor-not-allowed text-white font-medium rounded-xl shadow-lg transition-all duration-200 flex items-center justify-center gap-2"
         >
           {submitting ? (

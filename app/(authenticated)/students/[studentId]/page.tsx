@@ -2,8 +2,43 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { fetchHomeworkByStudent, fetchMyStudents, deleteHomework, HomeworkListItem, StudentItem } from '@/services/api';
-import { ArrowLeft, Clock, BookOpen, ChevronRight, Loader2, GraduationCap, Trash2 } from 'lucide-react';
+import { fetchHomeworkByStudent, fetchStudents, deleteHomework, HomeworkListItem, StudentItem } from '@/services/api';
+import { ArrowLeft, Clock, BookOpen, ChevronRight, Loader2, GraduationCap, Trash2, Eye, PlayCircle, CheckCircle2, Circle } from 'lucide-react';
+
+const progressConfig = {
+  not_started: {
+    label: 'Not Started',
+    icon: Circle,
+    bg: 'bg-stone-50',
+    text: 'text-stone-500',
+    border: 'border-stone-200',
+    iconColor: 'text-stone-400',
+  },
+  started: {
+    label: 'Started',
+    icon: Eye,
+    bg: 'bg-blue-50',
+    text: 'text-blue-700',
+    border: 'border-blue-200',
+    iconColor: 'text-blue-500',
+  },
+  in_progress: {
+    label: 'In Progress',
+    icon: PlayCircle,
+    bg: 'bg-amber-50',
+    text: 'text-amber-700',
+    border: 'border-amber-200',
+    iconColor: 'text-amber-500',
+  },
+  completed: {
+    label: 'Completed',
+    icon: CheckCircle2,
+    bg: 'bg-emerald-50',
+    text: 'text-emerald-700',
+    border: 'border-emerald-200',
+    iconColor: 'text-emerald-500',
+  },
+};
 
 export default function StudentHomeworkListPage() {
   const params = useParams();
@@ -20,7 +55,7 @@ export default function StudentHomeworkListPage() {
     const load = async () => {
       try {
         const [students, hw] = await Promise.all([
-          fetchMyStudents(),
+          fetchStudents(),
           fetchHomeworkByStudent(studentId),
         ]);
         setStudent(students.find(s => s.id === studentId) || null);
@@ -54,12 +89,6 @@ export default function StudentHomeworkListPage() {
       month: 'short',
       year: 'numeric',
     });
-  };
-
-  const statusConfig = {
-    pending: { label: 'New', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
-    in_progress: { label: 'In Progress', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
-    completed: { label: 'Completed', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
   };
 
   if (loading) {
@@ -105,7 +134,9 @@ export default function StudentHomeworkListPage() {
         ) : (
           <div className="space-y-3">
             {assignments.map((hw, idx) => {
-              const status = statusConfig[hw.status];
+              const pStatus = hw.progressStatus || 'not_started';
+              const progress = progressConfig[pStatus];
+              const ProgressIcon = progress.icon;
               const isConfirming = confirmDeleteId === hw.id;
               const isDeleting = deletingId === hw.id;
 
@@ -143,12 +174,17 @@ export default function StudentHomeworkListPage() {
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2.5 mb-1.5">
+                          <div className="flex items-center gap-2.5 mb-2">
                             <h3 className="text-base font-bold text-slate-900 font-serif truncate">
                               {hw.passageTitle}
                             </h3>
-                            <span className={`flex-none px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide border ${status.bg} ${status.text} ${status.border}`}>
-                              {status.label}
+                          </div>
+
+                          {/* Progress badge */}
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${progress.bg} ${progress.text} ${progress.border}`}>
+                              <ProgressIcon className={`w-3 h-3 ${progress.iconColor}`} />
+                              {progress.label}
                             </span>
                           </div>
 
