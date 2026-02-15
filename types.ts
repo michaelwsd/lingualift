@@ -1,95 +1,60 @@
-
 export enum LiteratureType {
-  ESSAY = 'Essay',
   SHORT_STORY = 'Short Story',
   NEWS_ARTICLE = 'News Article',
   OPINION_PIECE = 'Opinion Piece',
   BIOGRAPHY = 'Biography',
-  POEM = 'Poem'
 }
 
-export enum Theme {
-  SCIENCE_TECH = 'Science & Technology',
-  HISTORY = 'History',
-  NATURE = 'Nature & Environment',
-  SOCIETY = 'Society & Culture',
-  ARTS = 'Arts & Literature',
-  SPORTS = 'Sports & Health',
-  CUSTOM = 'Custom Topic'
+export interface GenerationConfig {
+  topic: string;
+  literatureType: LiteratureType;
 }
 
-export enum Difficulty {
-  EASY = 'Easy',
-  MEDIUM = 'Medium'
-}
-
-export interface VocabularyWord {
-  word: string;
-  definition: string;
-  exampleSentence: string;
-  id: string; // Unique ID
-}
-
-export interface Question {
+export interface ComprehensionQuestion {
   id: string;
   question: string;
   answer: string;
   explanation: string;
+  relevantText: string[];
 }
 
 export interface Passage {
   id: string;
   title: string;
-  content: string; // Markdown supported
-  vocabulary: VocabularyWord[];
-  questions: Question[];
-  writingPrompt: string;
-  sampleResponse: string;
-  theme: string;
+  content: string;
+  questions: ComprehensionQuestion[];
+  topic: string;
   type: LiteratureType;
   createdAt: number;
 }
 
-export interface SavedWord {
+export interface CollectedWord {
   id: string;
-  text: string;
-  definition: string;
-  synonym: string;
+  word: string;
+  meaning: string;
   exampleSentence: string;
-  createdAt: number;
+  memoryTip: string;
 }
 
-export interface GenerationConfig {
-  theme: Theme;
-  customTopic?: string;
-  literatureType: LiteratureType;
-  difficulty: Difficulty;
-}
-
-export interface VocabExercise {
-  id: string;
-  textWithBlanks: string;
+export interface FillInBlankExercise {
+  passage: string;
   answers: string[];
 }
 
-export interface VideoQuestion {
+export interface SynonymGroup {
+  word: string;
+  synonyms: string[];
+}
+
+export interface SynonymExercise {
+  groups: SynonymGroup[];
+}
+
+export interface SavedSession {
   id: string;
-  question: string;
-  options?: string[]; // For MCQ
-  answer: string; // String for both MCQ answer and T/F (stored as string "True"/"False")
-  type: 'MCQ' | 'TF';
-}
-
-export interface VideoActivity {
-  title: string;
-  channel: string;
-  url: string;
-  description: string;
-  mcqs: VideoQuestion[];
-  trueFalse: VideoQuestion[];
-}
-
-export interface WorksheetData {
-  vocabExercises: VocabExercise[];
-  videoActivity: VideoActivity;
+  savedAt: number;
+  passage: Passage;
+  collectedWords: CollectedWord[];
+  fillInBlankExercise: FillInBlankExercise | null;
+  synonymExercise: SynonymExercise | null;
 }

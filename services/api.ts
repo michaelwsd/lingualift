@@ -1,6 +1,17 @@
-import { GenerationConfig, Passage, SavedWord, WorksheetData } from "@/types";
+import { GenerationConfig, Passage, FillInBlankExercise, SynonymExercise } from "@/types";
 
-export const generatePassageContent = async (config: GenerationConfig): Promise<Omit<Passage, 'id' | 'createdAt' | 'theme' | 'type'>> => {
+export const suggestTopics = async (userInput?: string, format?: string): Promise<string[]> => {
+  const res = await fetch('/api/suggest-topics', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userInput, format }),
+  });
+  if (!res.ok) throw new Error("Failed to suggest topics");
+  const data = await res.json();
+  return data.topics;
+};
+
+export const generatePassageContent = async (config: GenerationConfig): Promise<Omit<Passage, 'id' | 'createdAt' | 'topic' | 'type'>> => {
   const res = await fetch('/api/generate-passage', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -10,49 +21,32 @@ export const generatePassageContent = async (config: GenerationConfig): Promise<
   return res.json();
 };
 
-export const getWordDefinition = async (word: string): Promise<string> => {
-  try {
-    const res = await fetch('/api/word-definition', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ word }),
-    });
-    if (!res.ok) return "Could not load definition.";
-    const data = await res.json();
-    return data.definition;
-  } catch {
-    return "Could not load definition.";
-  }
-};
-
-export const generateWordDetails = async (text: string, context: string): Promise<Omit<SavedWord, 'id' | 'text' | 'createdAt'>> => {
-  const res = await fetch('/api/word-details', {
+export const explainWord = async (word: string, context: string): Promise<{ meaning: string; exampleSentence: string; memoryTip: string }> => {
+  const res = await fetch('/api/explain-word', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text, context }),
+    body: JSON.stringify({ word, context }),
   });
-  if (!res.ok) throw new Error("Failed to get word details");
+  if (!res.ok) throw new Error("Failed to explain word");
   return res.json();
 };
 
-export const generateCollectionPassage = async (words: string[]): Promise<string> => {
-  if (words.length === 0) return "";
-  const res = await fetch('/api/collection-passage', {
+export const generateFillInBlank = async (words: string[]): Promise<FillInBlankExercise> => {
+  const res = await fetch('/api/fill-in-blank', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ words }),
   });
-  if (!res.ok) throw new Error("Failed to generate collection passage");
-  const data = await res.json();
-  return data.passage;
+  if (!res.ok) throw new Error("Failed to generate fill-in-blank exercise");
+  return res.json();
 };
 
-export const generateWorksheet = async (passageTopic: string, vocabWords: string[]): Promise<WorksheetData> => {
-  const res = await fetch('/api/generate-worksheet', {
+export const generateSynonyms = async (words: string[]): Promise<SynonymExercise> => {
+  const res = await fetch('/api/generate-synonyms', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ passageTopic, vocabWords }),
+    body: JSON.stringify({ words }),
   });
-  if (!res.ok) throw new Error("Failed to generate worksheet");
+  if (!res.ok) throw new Error("Failed to generate synonyms");
   return res.json();
 };
