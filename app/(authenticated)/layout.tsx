@@ -1,7 +1,7 @@
 'use client';
 
 import { LinguaLiftProvider } from '@/contexts/LinguaLiftContext';
-import { UserButton } from '@clerk/nextjs';
+import { ProfileDropdown } from '@/components/ProfileDropdown';
 import { Library, FolderOpen } from 'lucide-react';
 import Link from 'next/link';
 
@@ -32,7 +32,7 @@ function NavHeader() {
             <FolderOpen className="w-4 h-4" />
             Sessions
           </Link>
-          <UserButton afterSignOutUrl="/sign-in" />
+          <ProfileDropdown />
         </div>
       </div>
     </header>

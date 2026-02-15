@@ -181,7 +181,7 @@ export const PassageStage: React.FC<PassageStageProps> = ({
 
             {/* Passage Content */}
             <article
-              className="font-serif text-slate-700 text-lg leading-[2] selection:bg-amber-100 selection:text-amber-900"
+              className="font-serif text-slate-700 text-lg leading-loose selection:bg-amber-100 selection:text-amber-900"
               onMouseUp={handleTextSelection}
             >
               {paragraphs.map((para, i) => (

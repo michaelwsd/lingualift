@@ -88,7 +88,7 @@ export const ComprehensionStage: React.FC<ComprehensionStageProps> = ({ passage 
               </h1>
             </div>
 
-            <article className="font-serif text-slate-700 text-lg leading-[2]">
+            <article className="font-serif text-slate-700 text-lg leading-loose">
               {paragraphs.map((para, i) => renderParagraph(para, i))}
             </article>
           </div>
@@ -96,7 +96,7 @@ export const ComprehensionStage: React.FC<ComprehensionStageProps> = ({ passage 
       </div>
 
       {/* Right: Questions */}
-      <div className="w-[420px] lg:w-[480px] flex flex-col">
+      <div className="w-105 lg:w-120 flex flex-col">
         <div className="flex items-center gap-2 mb-3 px-1">
           <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider">
             Questions

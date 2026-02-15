@@ -163,7 +163,7 @@ export const FillInBlanks: React.FC<FillInBlanksProps> = ({ words, cachedExercis
       {/* Word Bank */}
       <div className="mb-5">
         <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-2">Word Bank</p>
-        <div className="flex flex-wrap gap-2 min-h-[40px] bg-stone-50 rounded-lg p-3 border border-stone-200">
+        <div className="flex flex-wrap gap-2 min-h-10 bg-stone-50 rounded-lg p-3 border border-stone-200">
           {availableWords.length === 0 && !checked ? (
             <p className="text-xs text-stone-400 italic">All words placed</p>
           ) : (
@@ -187,7 +187,7 @@ export const FillInBlanks: React.FC<FillInBlanksProps> = ({ words, cachedExercis
       </div>
 
       {/* Passage with Blanks */}
-      <div className="bg-white rounded-xl border border-stone-200 p-6 font-serif text-slate-700 text-base leading-[2]">
+      <div className="bg-white rounded-xl border border-stone-200 p-6 font-serif text-slate-700 text-base leading-loose">
         {segments.map((seg, i) => {
           const blankMatch = seg.match(/__BLANK_(\d+)__/);
           if (!blankMatch) return <span key={i}>{seg}</span>;

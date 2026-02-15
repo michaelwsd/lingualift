@@ -3,7 +3,7 @@ import { Library } from 'lucide-react';
 
 export default function SignUpPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-stone-100 via-indigo-50/30 to-stone-100 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-linear-to-br from-stone-100 via-indigo-50/30 to-stone-100 flex flex-col items-center justify-center p-4">
       <div className="text-center mb-8">
         <div className="flex items-center justify-center gap-3 mb-4">
           <div className="bg-indigo-900 p-3 rounded-xl shadow-lg">
@@ -14,6 +14,7 @@ export default function SignUpPage() {
         <p className="text-stone-500 text-sm font-light tracking-wide">Your VCE EAL Learning Companion</p>
       </div>
       <SignUp
+        forceRedirectUrl="/choose-role"
         appearance={{
           elements: {
             rootBox: "mx-auto",

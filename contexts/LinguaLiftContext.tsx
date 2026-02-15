@@ -17,6 +17,7 @@ interface LinguaLiftContextType {
   isGenerating: boolean;
   setIsGenerating: (v: boolean) => void;
   loadSession: (session: SavedSession) => void;
+  currentSessionId: string | null;
 }
 
 const LinguaLiftContext = createContext<LinguaLiftContextType | null>(null);
@@ -27,6 +28,7 @@ export function LinguaLiftProvider({ children }: { children: React.ReactNode }) 
   const [fillInBlankExercise, setFillInBlankExercise] = useState<FillInBlankExercise | null>(null);
   const [synonymExercise, setSynonymExercise] = useState<SynonymExercise | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 
   const addCollectedWord = useCallback((word: CollectedWord) => {
     setCollectedWords(prev => {
@@ -43,6 +45,7 @@ export function LinguaLiftProvider({ children }: { children: React.ReactNode }) 
     setCollectedWords([]);
     setFillInBlankExercise(null);
     setSynonymExercise(null);
+    setCurrentSessionId(null);
   }, []);
 
   const loadSession = useCallback((session: SavedSession) => {
@@ -50,6 +53,7 @@ export function LinguaLiftProvider({ children }: { children: React.ReactNode }) 
     setCollectedWords(session.collectedWords);
     setFillInBlankExercise(session.fillInBlankExercise);
     setSynonymExercise(session.synonymExercise);
+    setCurrentSessionId(session.id);
   }, []);
 
   return (
@@ -60,6 +64,7 @@ export function LinguaLiftProvider({ children }: { children: React.ReactNode }) 
       synonymExercise, setSynonymExercise,
       isGenerating, setIsGenerating,
       loadSession,
+      currentSessionId,
     }}>
       {children}
     </LinguaLiftContext.Provider>
