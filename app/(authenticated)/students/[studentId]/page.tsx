@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { fetchHomeworkByStudent, fetchStudents, deleteHomework, HomeworkListItem, StudentItem } from '@/services/api';
-import { ArrowLeft, Clock, BookOpen, ChevronRight, Loader2, GraduationCap, Trash2, Eye, PlayCircle, CheckCircle2, Circle } from 'lucide-react';
+import { fetchHomeworkByStudent, fetchStudents, fetchPassagesByStudent, deleteHomework, deletePassage, HomeworkListItem, StudentItem, PassageListItem } from '@/services/api';
+import { ArrowLeft, Clock, BookOpen, ChevronRight, Loader2, GraduationCap, Trash2, Eye, PlayCircle, CheckCircle2, Circle, FileText } from 'lucide-react';
 
 const progressConfig = {
   not_started: {
@@ -40,6 +40,17 @@ const progressConfig = {
   },
 };
 
+interface PassageGroup {
+  passageId: string;
+  title: string;
+  type: string;
+  date: string;
+  sentPassageId: string | null;
+  firstHomeworkId: string | null;
+  viewed: boolean | null;
+  homework: HomeworkListItem[];
+}
+
 export default function StudentHomeworkListPage() {
   const params = useParams();
   const router = useRouter();
@@ -47,38 +58,87 @@ export default function StudentHomeworkListPage() {
 
   const [student, setStudent] = useState<StudentItem | null>(null);
   const [assignments, setAssignments] = useState<HomeworkListItem[]>([]);
+  const [passages, setPassages] = useState<PassageListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; type: 'homework' | 'passage' } | null>(null);
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const [students, hw] = await Promise.all([
-          fetchStudents(),
-          fetchHomeworkByStudent(studentId),
-        ]);
-        setStudent(students.find(s => s.id === studentId) || null);
-        setAssignments(hw);
-      } catch {
-        setAssignments([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
+    Promise.all([
+      fetchStudents().catch(() => [] as StudentItem[]),
+      fetchHomeworkByStudent(studentId).catch(() => [] as HomeworkListItem[]),
+      fetchPassagesByStudent(studentId).catch(() => [] as PassageListItem[]),
+    ]).then(([students, hw, ps]) => {
+      setStudent(students.find(s => s.id === studentId) || null);
+      setAssignments(hw);
+      setPassages(ps);
+    }).finally(() => setLoading(false));
   }, [studentId]);
 
-  const handleDelete = useCallback(async (homeworkId: string) => {
+  const groups = useMemo(() => {
+    const map = new Map<string, PassageGroup>();
+
+    for (const p of passages) {
+      map.set(p.passageId, {
+        passageId: p.passageId,
+        title: p.title,
+        type: p.type,
+        date: p.sentAt,
+        sentPassageId: p.id,
+        firstHomeworkId: null,
+        viewed: p.viewed ?? null,
+        homework: [],
+      });
+    }
+
+    for (const hw of assignments) {
+      const key = hw.passageId || hw.id;
+      const existing = map.get(key);
+      if (existing) {
+        existing.homework.push(hw);
+        if (!existing.firstHomeworkId) existing.firstHomeworkId = hw.id;
+      } else {
+        map.set(key, {
+          passageId: key,
+          title: hw.passageTitle,
+          type: hw.passageType,
+          date: hw.assignedAt,
+          sentPassageId: null,
+          firstHomeworkId: hw.id,
+          viewed: null,
+          homework: [hw],
+        });
+      }
+    }
+
+    return Array.from(map.values()).sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+  }, [assignments, passages]);
+
+  const handleDeleteHomework = useCallback(async (homeworkId: string) => {
     setDeletingId(homeworkId);
     try {
       await deleteHomework(homeworkId);
       setAssignments(prev => prev.filter(a => a.id !== homeworkId));
     } catch {
-      // Could show error toast, but for now just reset
+      // silently fail
     } finally {
       setDeletingId(null);
-      setConfirmDeleteId(null);
+      setConfirmDelete(null);
+    }
+  }, []);
+
+  const handleDeletePassage = useCallback(async (sentPassageId: string) => {
+    setDeletingId(sentPassageId);
+    try {
+      await deletePassage(sentPassageId);
+      setPassages(prev => prev.filter(p => p.id !== sentPassageId));
+    } catch {
+      // silently fail
+    } finally {
+      setDeletingId(null);
+      setConfirmDelete(null);
     }
   }, []);
 
@@ -102,6 +162,8 @@ export default function StudentHomeworkListPage() {
     );
   }
 
+  const totalItems = groups.length;
+
   return (
     <div className="h-full overflow-y-auto custom-scrollbar">
       <div className="max-w-3xl mx-auto px-6 lg:px-8 py-10">
@@ -117,13 +179,13 @@ export default function StudentHomeworkListPage() {
             {student?.name || 'Student'}
           </h1>
           <p className="text-sm text-stone-500">
-            {assignments.length === 0
+            {totalItems === 0
               ? 'No homework assigned to this student yet.'
-              : `${assignments.length} assignment${assignments.length !== 1 ? 's' : ''}`}
+              : `${totalItems} passage${totalItems !== 1 ? 's' : ''}`}
           </p>
         </div>
 
-        {assignments.length === 0 ? (
+        {totalItems === 0 ? (
           <div className="text-center py-16 animate-fade-in">
             <div className="w-16 h-16 bg-stone-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <GraduationCap className="w-8 h-8 text-stone-300" />
@@ -132,33 +194,28 @@ export default function StudentHomeworkListPage() {
             <p className="text-xs text-stone-300">Assign homework from the Learn page</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {assignments.map((hw, idx) => {
-              const pStatus = hw.progressStatus || 'not_started';
-              const progress = progressConfig[pStatus];
-              const ProgressIcon = progress.icon;
-              const isConfirming = confirmDeleteId === hw.id;
-              const isDeleting = deletingId === hw.id;
-
-              return (
-                <div
-                  key={hw.id}
-                  className="relative bg-white rounded-xl border border-stone-200/80 shadow-sm hover:shadow-md transition-all duration-200 animate-card-in group"
-                  style={{ animationDelay: `${idx * 60}ms` }}
-                >
-                  {/* Confirm delete overlay */}
-                  {isConfirming && (
+          <div className="space-y-4">
+            {groups.map((group, idx) => (
+              <div
+                key={group.passageId}
+                className="animate-card-in"
+                style={{ animationDelay: `${idx * 60}ms` }}
+              >
+                {/* Passage card (parent) — not clickable for teacher */}
+                <div className="relative bg-white rounded-xl border border-stone-200/80 shadow-sm transition-all duration-200">
+                  {/* Confirm delete overlay for passage */}
+                  {confirmDelete?.type === 'passage' && confirmDelete.id === group.sentPassageId && (
                     <div className="absolute inset-0 z-10 bg-white/95 backdrop-blur-sm rounded-xl flex items-center justify-center gap-3 animate-fade-in">
-                      <p className="text-sm text-stone-600 font-medium">Delete this homework?</p>
+                      <p className="text-sm text-stone-600 font-medium">Delete this passage?</p>
                       <button
-                        onClick={() => handleDelete(hw.id)}
-                        disabled={isDeleting}
+                        onClick={() => handleDeletePassage(group.sentPassageId!)}
+                        disabled={deletingId === group.sentPassageId}
                         className="px-3.5 py-1.5 text-xs font-semibold text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors disabled:opacity-50"
                       >
-                        {isDeleting ? 'Deleting...' : 'Delete'}
+                        {deletingId === group.sentPassageId ? 'Deleting...' : 'Delete'}
                       </button>
                       <button
-                        onClick={() => setConfirmDeleteId(null)}
+                        onClick={() => setConfirmDelete(null)}
                         className="px-3.5 py-1.5 text-xs font-semibold text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors"
                       >
                         Cancel
@@ -167,58 +224,127 @@ export default function StudentHomeworkListPage() {
                   )}
 
                   <div className="flex items-start">
-                    {/* Main clickable area */}
-                    <button
-                      onClick={() => router.push(`/students/${studentId}/homework/${hw.id}`)}
-                      className="flex-1 text-left p-5 min-w-0"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2.5 mb-2">
-                            <h3 className="text-base font-bold text-slate-900 font-serif truncate">
-                              {hw.passageTitle}
-                            </h3>
-                          </div>
-
-                          {/* Progress badge */}
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${progress.bg} ${progress.text} ${progress.border}`}>
-                              <ProgressIcon className={`w-3 h-3 ${progress.iconColor}`} />
-                              {progress.label}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-4 text-xs text-stone-400">
-                            <span className="flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              {formatDate(hw.assignedAt)}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <BookOpen className="w-3 h-3" />
-                              {hw.wordCount} words
-                            </span>
-                            {hw.passageType && (
-                              <span className="text-stone-300">{hw.passageType}</span>
-                            )}
-                          </div>
+                    <div className="flex-1 p-5 min-w-0">
+                      <div className="flex items-center gap-2.5 mb-1.5">
+                        <div className="w-8 h-8 bg-teal-50 rounded-lg flex items-center justify-center flex-none">
+                          <FileText className="w-4 h-4 text-teal-600" />
                         </div>
-
-                        <ChevronRight className="w-5 h-5 text-stone-300 group-hover:text-stone-500 group-hover:translate-x-0.5 transition-all flex-none mt-1" />
+                        <h3 className="text-base font-bold text-slate-900 font-serif truncate">
+                          {group.title}
+                        </h3>
                       </div>
-                    </button>
 
-                    {/* Delete button */}
-                    <button
-                      onClick={() => setConfirmDeleteId(hw.id)}
-                      className="flex-none p-5 text-stone-300 hover:text-red-500 transition-colors"
-                      title="Delete homework"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                      <div className="flex items-center gap-3 text-xs text-stone-400 ml-10.5">
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {formatDate(group.date)}
+                        </span>
+                        {group.type && (
+                          <span className="text-stone-300">{group.type}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Delete passage button (only if explicitly sent) */}
+                    {group.sentPassageId && (
+                      <button
+                        onClick={() => setConfirmDelete({ id: group.sentPassageId!, type: 'passage' })}
+                        className="flex-none p-5 text-stone-300 hover:text-red-500 transition-colors"
+                        title="Delete passage"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
-              );
-            })}
+
+                {/* Homework cards (children) */}
+                {group.homework.length > 0 && (
+                  <div className="ml-6 mt-1 space-y-1">
+                    {group.homework.map((hw) => {
+                      const pStatus = hw.progressStatus || 'not_started';
+                      const progress = progressConfig[pStatus];
+                      const ProgressIcon = progress.icon;
+                      const isConfirmingHw = confirmDelete?.type === 'homework' && confirmDelete.id === hw.id;
+
+                      return (
+                        <div
+                          key={hw.id}
+                          className="relative bg-white rounded-lg border border-stone-200/60 shadow-sm hover:shadow-md transition-all duration-200 group/hw"
+                        >
+                          {/* Confirm delete overlay for homework */}
+                          {isConfirmingHw && (
+                            <div className="absolute inset-0 z-10 bg-white/95 backdrop-blur-sm rounded-lg flex items-center justify-center gap-3 animate-fade-in">
+                              <p className="text-sm text-stone-600 font-medium">Delete this homework?</p>
+                              <button
+                                onClick={() => handleDeleteHomework(hw.id)}
+                                disabled={deletingId === hw.id}
+                                className="px-3.5 py-1.5 text-xs font-semibold text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors disabled:opacity-50"
+                              >
+                                {deletingId === hw.id ? 'Deleting...' : 'Delete'}
+                              </button>
+                              <button
+                                onClick={() => setConfirmDelete(null)}
+                                className="px-3.5 py-1.5 text-xs font-semibold text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          )}
+
+                          <div className="flex items-center">
+                            <div
+                              onClick={() => router.push(`/students/${studentId}/homework/${hw.id}`)}
+                              className="flex-1 px-4 py-3 min-w-0 cursor-pointer"
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div className="w-7 h-7 bg-indigo-50 rounded-md flex items-center justify-center flex-none">
+                                    <GraduationCap className="w-3.5 h-3.5 text-indigo-600" />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-semibold text-slate-800">
+                                        Homework
+                                      </span>
+                                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${progress.bg} ${progress.text} ${progress.border}`}>
+                                        <ProgressIcon className={`w-2.5 h-2.5 ${progress.iconColor}`} />
+                                        {progress.label}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-3 text-[11px] text-stone-400 mt-0.5">
+                                      <span className="flex items-center gap-1">
+                                        <Clock className="w-2.5 h-2.5" />
+                                        {formatDate(hw.assignedAt)}
+                                      </span>
+                                      <span className="flex items-center gap-1">
+                                        <BookOpen className="w-2.5 h-2.5" />
+                                        {hw.wordCount} words
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <ChevronRight className="w-4 h-4 text-stone-300 group-hover/hw:text-stone-500 group-hover/hw:translate-x-0.5 transition-all flex-none" />
+                              </div>
+                            </div>
+
+                            {/* Delete homework button */}
+                            <button
+                              onClick={() => setConfirmDelete({ id: hw.id, type: 'homework' })}
+                              className="flex-none px-3 py-3 text-stone-300 hover:text-red-500 transition-colors"
+                              title="Delete homework"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         )}
       </div>

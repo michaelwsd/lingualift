@@ -163,3 +163,11 @@ export interface HomeworkProgress {
   answers_given: Record<string, any>;
   updated_at: string;
 }
+
+export interface SentPassage {
+  id: string;
+  teacher_id: string;
+  student_id: string;
+  passage: Passage;
+  sent_at: string;
+}

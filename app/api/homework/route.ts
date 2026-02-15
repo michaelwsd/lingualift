@@ -26,6 +26,7 @@ export async function GET() {
       studentName: a.student_name,
       assignedAt: a.assigned_at,
       status: a.status,
+      passageId: a.passage?.id || '',
       passageTitle: a.passage?.title || 'Untitled',
       passageType: a.passage?.type || '',
       wordCount: Array.isArray(a.collected_words) ? a.collected_words.length : 0,

@@ -13,7 +13,7 @@ import {
 import { PassageFill } from './PassageFill';
 import { WordMatching } from './WordMatching';
 import { SynonymBasket } from './SynonymBasket';
-import { Check, X, ArrowRight, BookOpen, ListChecks, ArrowRightLeft, PenLine, Layers, Bug } from 'lucide-react';
+import { Check, X, ArrowRight, BookOpen, ListChecks, ArrowRightLeft, PenLine, Layers } from 'lucide-react';
 
 // --- Helpers ---
 
@@ -303,26 +303,6 @@ export const PracticeSession: React.FC<PracticeSessionProps> = ({
     }
   }, [allQuestions, passageFills, matchingExercises, basketExercises, answeredCorrectly, answeredIncorrectly, currentIndex, queue, onComplete, persistState]);
 
-  // Debug: 1st click → reveal correct answer, 2nd click → skip to next
-  const handleDebugSkip = useCallback(() => {
-    if (isChecked) {
-      handleNext();
-      return;
-    }
-    const itemId = currentMCQuestion?.id || currentItemId;
-    if (itemId) {
-      if (currentMCQuestion) {
-        setSelectedOption(currentMCQuestion.correctAnswer);
-      }
-      const newCorrect = new Set(answeredCorrectly);
-      newCorrect.add(itemId);
-      setAnsweredCorrectly(newCorrect);
-      setIsChecked(true);
-      setIsCorrect(true);
-      persistState({ answeredCorrectly: newCorrect });
-    }
-  }, [isChecked, handleNext, currentMCQuestion, currentItemId, answeredCorrectly, persistState]);
-
   if (!currentItemId) {
     return (
       <div className="h-full flex items-center justify-center">
@@ -330,18 +310,6 @@ export const PracticeSession: React.FC<PracticeSessionProps> = ({
       </div>
     );
   }
-
-  // --- Debug button (shared) ---
-  const debugButton = (
-    <button
-      onClick={handleDebugSkip}
-      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-orange-500 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-lg transition-colors"
-      title="Debug: auto-answer correctly"
-    >
-      <Bug className="w-3 h-3" />
-      {isChecked ? 'Skip' : 'Show Answer'}
-    </button>
-  );
 
   // --- Feedback banner + Next button (shared by interactive exercises) ---
   const feedbackAndNext = (
@@ -364,7 +332,6 @@ export const PracticeSession: React.FC<PracticeSessionProps> = ({
         </div>
       </div>
       <div className="flex items-center justify-center gap-3 mt-4 pb-4">
-        {debugButton}
         {isChecked && (
           <button
             onClick={handleNext}
@@ -565,7 +532,6 @@ export const PracticeSession: React.FC<PracticeSessionProps> = ({
 
         {/* Check / Next button */}
         <div className="flex items-center justify-center gap-3 mt-4">
-          {debugButton}
           {isChecked ? (
             <button
               onClick={handleNext}

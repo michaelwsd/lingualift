@@ -1,4 +1,4 @@
-import { GenerationConfig, Passage, FillInBlankExercise, SynonymExercise, HomeworkAssignment, HomeworkProgress, HomeworkPhase, CollectedWord } from "@/types";
+import { GenerationConfig, Passage, FillInBlankExercise, SynonymExercise, HomeworkAssignment, HomeworkProgress, HomeworkPhase, CollectedWord, SentPassage } from "@/types";
 
 export const suggestTopics = async (userInput?: string, format?: string): Promise<string[]> => {
   const res = await fetch('/api/suggest-topics', {
@@ -73,6 +73,7 @@ export interface HomeworkListItem {
   studentName: string;
   assignedAt: string;
   status: 'pending' | 'in_progress' | 'completed';
+  passageId: string;
   passageTitle: string;
   passageType: string;
   wordCount: number;
@@ -140,6 +141,56 @@ export const fetchHomeworkByStudent = async (studentId: string): Promise<Homewor
 export const deleteHomework = async (homeworkId: string): Promise<void> => {
   const res = await fetch(`/api/homework/${homeworkId}`, { method: 'DELETE' });
   if (!res.ok) throw new Error("Failed to delete homework");
+};
+
+// --- Passage API helpers ---
+
+export interface PassageListItem {
+  id: string;
+  passageId: string;
+  title: string;
+  type: string;
+  sentAt: string;
+  viewed?: boolean;
+}
+
+export const sendPassage = async (data: {
+  studentId: string;
+  passage: Passage;
+}): Promise<{ success: boolean; id: string }> => {
+  const res = await fetch('/api/passages/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to send passage");
+  return res.json();
+};
+
+export const fetchPassages = async (): Promise<PassageListItem[]> => {
+  const res = await fetch('/api/passages');
+  if (!res.ok) throw new Error("Failed to fetch passages");
+  const data = await res.json();
+  return data.passages;
+};
+
+export const fetchPassage = async (id: string, source: 'passage' | 'homework' = 'passage'): Promise<Passage> => {
+  const res = await fetch(`/api/passages/${id}?source=${source}`);
+  if (!res.ok) throw new Error("Failed to fetch passage");
+  const data = await res.json();
+  return data.passage;
+};
+
+export const fetchPassagesByStudent = async (studentId: string): Promise<PassageListItem[]> => {
+  const res = await fetch(`/api/passages/by-student/${studentId}`);
+  if (!res.ok) throw new Error("Failed to fetch passages for student");
+  const data = await res.json();
+  return data.passages;
+};
+
+export const deletePassage = async (passageId: string): Promise<void> => {
+  const res = await fetch(`/api/passages/${passageId}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error("Failed to delete passage");
 };
 
 export const generateHomeworkFillInBlank = async (words: string[]): Promise<FillInBlankExercise> => {

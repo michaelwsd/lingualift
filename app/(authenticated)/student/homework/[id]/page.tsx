@@ -8,7 +8,7 @@ import { HomeworkProgressBar } from '@/components/homework/HomeworkProgressBar';
 import { VocabReview } from '@/components/homework/VocabReview';
 import { PracticeSession } from '@/components/homework/PracticeSession';
 import { CompletionScreen } from '@/components/homework/CompletionScreen';
-import { Loader2, LogOut, Bug } from 'lucide-react';
+import { Loader2, LogOut } from 'lucide-react';
 
 const PHASE_ORDER: HomeworkPhase[] = ['vocab_review', 'practice', 'completed'];
 
@@ -188,20 +188,6 @@ export default function HomeworkSessionPage() {
             >
               <LogOut className="w-3.5 h-3.5" />
               Exit
-            </button>
-            <button
-              onClick={() => {
-                if (currentPhase === 'vocab_review') {
-                  advancePhase('vocab_review');
-                } else if (currentPhase === 'practice') {
-                  handlePracticeComplete();
-                }
-              }}
-              className="absolute top-4 right-5 lg:right-8 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-orange-500 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-lg transition-colors"
-              title="Debug: skip to next phase"
-            >
-              <Bug className="w-3.5 h-3.5" />
-              Skip
             </button>
           </>
         )}
