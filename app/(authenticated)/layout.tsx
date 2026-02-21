@@ -8,12 +8,34 @@ import { useUser } from '@clerk/nextjs';
 import { usePathname, useRouter } from 'next/navigation';
 import { getUserRole } from '@/lib/getUserRole';
 import { useEffect } from 'react';
+import { syncPassagesToLibrary } from '@/services/api';
+
+const SESSIONS_KEY = 'lingualift-sessions';
+const SYNCED_KEY = 'lingualift-passages-synced';
 
 function NavHeader() {
   const { user, isLoaded } = useUser();
   const pathname = usePathname();
   const role = getUserRole(user);
   const isStudent = role === 'student';
+
+  // One-time sync of localStorage passages to DB
+  useEffect(() => {
+    if (role !== 'teacher') return;
+    if (localStorage.getItem(SYNCED_KEY) === 'true') return;
+
+    const sessions = JSON.parse(localStorage.getItem(SESSIONS_KEY) || '[]');
+    const passages = sessions.map((s: any) => s.passage).filter(Boolean);
+
+    if (passages.length === 0) {
+      localStorage.setItem(SYNCED_KEY, 'true');
+      return;
+    }
+
+    syncPassagesToLibrary(passages)
+      .then(() => localStorage.setItem(SYNCED_KEY, 'true'))
+      .catch(err => console.error('Failed to sync localStorage passages:', err));
+  }, [role]);
 
   const logoHref = isStudent ? '/student/homework' : '/generate';
 

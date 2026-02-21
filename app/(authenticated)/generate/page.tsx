@@ -3,7 +3,7 @@
 import { useLinguaLift } from '@/contexts/LinguaLiftContext';
 import { GeneratorForm } from '@/components/GeneratorForm';
 import { useRouter } from 'next/navigation';
-import { generatePassageContent } from '@/services/api';
+import { generatePassageContent, savePassageToLibrary } from '@/services/api';
 import { GenerationConfig } from '@/types';
 
 export default function GeneratePage() {
@@ -14,14 +14,21 @@ export default function GeneratePage() {
     setIsGenerating(true);
     try {
       const result = await generatePassageContent(config);
-      setPassage({
+      const passage = {
         ...result,
         id: crypto.randomUUID(),
         topic: config.topic,
         type: config.literatureType,
         createdAt: Date.now(),
-      });
+      };
+      setPassage(passage);
       clearCollectedWords();
+
+      // Auto-save to DB (fire-and-forget)
+      savePassageToLibrary(passage).catch(err =>
+        console.error('Failed to auto-save passage:', err)
+      );
+
       router.push('/learn');
     } catch (error) {
       console.error(error);

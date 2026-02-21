@@ -203,3 +203,52 @@ export const generateHomeworkFillInBlank = async (words: string[]): Promise<Fill
   if (!res.ok) throw new Error("Failed to generate fill-in-blank exercise");
   return res.json();
 };
+
+// --- Teacher Passage Library ---
+
+export interface TeacherPassageListItem {
+  id: string;
+  title: string;
+  topic: string;
+  type: string;
+  created_at: string;
+}
+
+export const savePassageToLibrary = async (passage: Passage): Promise<{ success: boolean; id: string }> => {
+  const res = await fetch('/api/teacher-passages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ passage }),
+  });
+  if (!res.ok) throw new Error("Failed to save passage");
+  return res.json();
+};
+
+export const fetchTeacherPassages = async (): Promise<TeacherPassageListItem[]> => {
+  const res = await fetch('/api/teacher-passages');
+  if (!res.ok) throw new Error("Failed to fetch passages");
+  const data = await res.json();
+  return data.passages;
+};
+
+export const fetchTeacherPassage = async (id: string): Promise<Passage> => {
+  const res = await fetch(`/api/teacher-passages/${id}`);
+  if (!res.ok) throw new Error("Failed to fetch passage");
+  const data = await res.json();
+  return data.passage;
+};
+
+export const deleteTeacherPassage = async (id: string): Promise<void> => {
+  const res = await fetch(`/api/teacher-passages/${id}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error("Failed to delete passage");
+};
+
+export const syncPassagesToLibrary = async (passages: Passage[]): Promise<{ success: boolean; synced: number }> => {
+  const res = await fetch('/api/teacher-passages/sync', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ passages }),
+  });
+  if (!res.ok) throw new Error("Failed to sync passages");
+  return res.json();
+};
