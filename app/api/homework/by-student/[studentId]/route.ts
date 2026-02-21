@@ -32,7 +32,7 @@ export async function GET(
     if (homeworkIds.length > 0) {
       const { data: progressData } = await supabaseAdmin
         .from('homework_progress')
-        .select('homework_id, current_phase, exercises_completed')
+        .select('homework_id, current_phase, exercises_completed, answers_given')
         .eq('student_id', studentId)
         .in('homework_id', homeworkIds);
 
@@ -50,14 +50,28 @@ export async function GET(
       // - "in_progress": student has attempted at least one question
       // - "completed": homework is completed
       let progressStatus: 'not_started' | 'started' | 'in_progress' | 'completed' = 'not_started';
+      let completionPercent = 0;
+
       if (progress) {
         if (progress.current_phase === 'completed') {
           progressStatus = 'completed';
+          completionPercent = 100;
         } else if (
           progress.current_phase === 'practice' ||
           (Array.isArray(progress.exercises_completed) && progress.exercises_completed.length > 0)
         ) {
           progressStatus = 'in_progress';
+
+          // Calculate completion from practice state
+          const practiceState = progress.answers_given?.practice;
+          if (practiceState) {
+            const total = (practiceState.allQuestions?.length || 0)
+              + (practiceState.passageFills?.length || 0)
+              + (practiceState.matchingExercises?.length || 0)
+              + (practiceState.basketExercises?.length || 0);
+            const correct = practiceState.answeredCorrectly?.length || 0;
+            completionPercent = total > 0 ? Math.round((correct / total) * 100) : 0;
+          }
         } else {
           progressStatus = 'started';
         }
@@ -73,6 +87,7 @@ export async function GET(
         passageType: a.passage?.type || '',
         wordCount: Array.isArray(a.collected_words) ? a.collected_words.length : 0,
         progressStatus,
+        completionPercent,
       };
     });
 

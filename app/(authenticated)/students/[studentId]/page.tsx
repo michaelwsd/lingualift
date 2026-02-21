@@ -310,6 +310,9 @@ export default function StudentHomeworkListPage() {
                                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${progress.bg} ${progress.text} ${progress.border}`}>
                                         <ProgressIcon className={`w-2.5 h-2.5 ${progress.iconColor}`} />
                                         {progress.label}
+                                        {hw.completionPercent != null && hw.completionPercent > 0 && pStatus !== 'completed' && (
+                                          <span className="ml-0.5">{hw.completionPercent}%</span>
+                                        )}
                                       </span>
                                     </div>
                                     <div className="flex items-center gap-3 text-[11px] text-stone-400 mt-0.5">

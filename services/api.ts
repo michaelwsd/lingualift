@@ -78,6 +78,7 @@ export interface HomeworkListItem {
   passageType: string;
   wordCount: number;
   progressStatus?: 'not_started' | 'started' | 'in_progress' | 'completed';
+  completionPercent?: number;
 }
 
 export const fetchHomeworkList = async (): Promise<HomeworkListItem[]> => {
