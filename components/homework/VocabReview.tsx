@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { CollectedWord } from '@/types';
+import { speak } from '@/lib/speak';
 import { Volume2, ArrowRight, BookOpen } from 'lucide-react';
 
 interface VocabReviewProps {
@@ -10,13 +11,6 @@ interface VocabReviewProps {
 }
 
 export const VocabReview: React.FC<VocabReviewProps> = ({ words, onComplete }) => {
-  const handleSpeak = (text: string) => {
-    if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 0.85;
-      speechSynthesis.speak(utterance);
-    }
-  };
 
   return (
     <div className="h-full flex flex-col">
@@ -43,7 +37,7 @@ export const VocabReview: React.FC<VocabReviewProps> = ({ words, onComplete }) =
                   <div className="flex items-center gap-2.5">
                     <h3 className="text-lg font-bold text-slate-900 capitalize font-serif">{word.word}</h3>
                     <button
-                      onClick={() => handleSpeak(word.word)}
+                      onClick={() => speak(word.word)}
                       className="text-stone-400 hover:text-indigo-600 transition-colors p-0.5"
                     >
                       <Volume2 className="w-4 h-4" />

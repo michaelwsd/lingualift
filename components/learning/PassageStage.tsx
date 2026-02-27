@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { Passage, CollectedWord } from '@/types';
 import { explainWord } from '@/services/api';
 import { X, Loader2, Plus, BookOpen, Lightbulb, Trash2, Volume2, Sparkles } from 'lucide-react';
+import { speak } from '@/lib/speak';
 
 interface PassageStageProps {
   passage: Passage;
@@ -126,13 +127,7 @@ export const PassageStage: React.FC<PassageStageProps> = ({
     }
   };
 
-  const handleSpeak = (word: string) => {
-    if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(word);
-      utterance.lang = 'en-US';
-      window.speechSynthesis.speak(utterance);
-    }
-  };
+  const handleSpeak = (word: string) => speak(word);
 
   const paragraphs = passage.content.split(/\n\s*\n/).filter(p => p.trim());
 

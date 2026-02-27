@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { CollectedWord } from '@/types';
+import { speak } from '@/lib/speak';
 import {
   BookOpen,
   Volume2,
@@ -59,13 +60,7 @@ function WordModal({
   word: VocabWord;
   onClose: () => void;
 }) {
-  const handleSpeak = (text: string) => {
-    if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 0.85;
-      speechSynthesis.speak(utterance);
-    }
-  };
+  const handleSpeak = (text: string) => speak(text);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
