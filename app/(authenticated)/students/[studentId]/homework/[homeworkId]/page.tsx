@@ -72,15 +72,14 @@ export default function HomeworkQuestionsPage() {
     exercises.practiceQuestions.length > 0 ||
     exercises.passageFillExercises.length > 0 ||
     exercises.wordMatchingExercises.length > 0 ||
-    exercises.synonymBasketExercises.length > 0
+    exercises.wordMatchingExercises.length > 0
   );
 
   // Count totals
   const totalItems = hasExercises
     ? exercises.practiceQuestions.length +
       exercises.passageFillExercises.length +
-      exercises.wordMatchingExercises.length +
-      exercises.synonymBasketExercises.length
+      exercises.wordMatchingExercises.length
     : 0;
 
   const typeConfig = {
@@ -285,37 +284,6 @@ export default function HomeworkQuestionsPage() {
               </Section>
             )}
 
-            {/* Synonym Basket Exercises */}
-            {exercises.synonymBasketExercises.length > 0 && (
-              <Section title="Synonym Basket Exercises" icon={<Layers className="w-4 h-4" />} count={exercises.synonymBasketExercises.length}>
-                <div className="space-y-4">
-                  {exercises.synonymBasketExercises.map((ex, i) => (
-                    <div key={ex.id} className="bg-white rounded-lg border border-stone-200/80 p-4 animate-card-in" style={{ animationDelay: `${i * 60}ms` }}>
-                      <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-3 block">
-                        Set {i + 1} &middot; {ex.baskets.length} baskets
-                      </span>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {ex.baskets.map(basket => {
-                          const syns = ex.synonymPool.filter(s => s.correctBasketId === basket.id);
-                          return (
-                            <div key={basket.id} className="bg-stone-50 rounded-lg p-3">
-                              <h4 className="text-sm font-bold text-slate-800 capitalize mb-2">{basket.word}</h4>
-                              <div className="flex flex-wrap gap-1.5">
-                                {syns.map(s => (
-                                  <span key={s.key} className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 text-[11px] font-medium">
-                                    {s.text}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </Section>
-            )}
           </>
         )}
       </div>

@@ -67,8 +67,7 @@ export async function GET(
           if (practiceState) {
             const total = (practiceState.allQuestions?.length || 0)
               + (practiceState.passageFills?.length || 0)
-              + (practiceState.matchingExercises?.length || 0)
-              + (practiceState.basketExercises?.length || 0);
+              + (practiceState.matchingExercises?.length || 0);
             const correct = practiceState.answeredCorrectly?.length || 0;
             completionPercent = total > 0 ? Math.round((correct / total) * 100) : 0;
           }

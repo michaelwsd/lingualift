@@ -8,11 +8,9 @@ import {
   PracticeSessionState,
   PassageFillExercise,
   WordMatchingExercise,
-  SynonymBasketExercise,
 } from '@/types';
 import { PassageFill } from './PassageFill';
 import { WordMatching } from './WordMatching';
-import { SynonymBasket } from './SynonymBasket';
 import { Check, X, ArrowRight, BookOpen, ListChecks, ArrowRightLeft, PenLine, Layers } from 'lucide-react';
 
 // --- Helpers ---
@@ -68,7 +66,6 @@ function generateMoreQueue(
   questions: PracticeQuestion[],
   passageFills: PassageFillExercise[],
   matchingExercises: WordMatchingExercise[],
-  basketExercises: SynonymBasketExercise[],
   correct: Set<string>,
   incorrect: Set<string>,
 ): string[] {
@@ -76,7 +73,6 @@ function generateMoreQueue(
   questions.forEach(q => allItems.push({ id: q.id, wordIds: [q.wordId] }));
   passageFills.forEach(p => allItems.push({ id: p.id, wordIds: p.wordIds }));
   matchingExercises.forEach(m => allItems.push({ id: m.id, wordIds: m.wordIds }));
-  basketExercises.forEach(b => allItems.push({ id: b.id, wordIds: b.wordIds }));
 
   const wrongUncorrected = allItems.filter(item => incorrect.has(item.id) && !correct.has(item.id));
   const neverAnswered = allItems.filter(item => !correct.has(item.id) && !incorrect.has(item.id));
@@ -131,7 +127,6 @@ export const PracticeSession: React.FC<PracticeSessionProps> = ({
   const allQuestions = savedState?.allQuestions || exercises?.practiceQuestions || [];
   const passageFills = savedState?.passageFills || exercises?.passageFillExercises || [];
   const matchingExercises = savedState?.matchingExercises || exercises?.wordMatchingExercises || [];
-  const basketExercises = savedState?.basketExercises || exercises?.synonymBasketExercises || [];
 
   // Build initial queue if no saved state
   const initialQueue = useMemo(() => {
@@ -140,7 +135,6 @@ export const PracticeSession: React.FC<PracticeSessionProps> = ({
     allQuestions.forEach(q => queueItems.push({ id: q.id, wordIds: [q.wordId] }));
     passageFills.forEach(p => queueItems.push({ id: p.id, wordIds: p.wordIds }));
     matchingExercises.forEach(m => queueItems.push({ id: m.id, wordIds: m.wordIds }));
-    basketExercises.forEach(b => queueItems.push({ id: b.id, wordIds: b.wordIds }));
     return buildConstrainedQueue(queueItems);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -178,18 +172,11 @@ export const PracticeSession: React.FC<PracticeSessionProps> = ({
     return map;
   }, [matchingExercises]);
 
-  const basketMap = useMemo(() => {
-    const map = new Map<string, SynonymBasketExercise>();
-    for (const b of basketExercises) map.set(b.id, b);
-    return map;
-  }, [basketExercises]);
-
   // Current queue item
   const currentItemId = queue[currentIndex];
   const currentMCQuestion = currentItemId ? questionMap.get(currentItemId) : undefined;
   const currentPassageFill = currentItemId ? passageFillMap.get(currentItemId) : undefined;
   const currentMatching = currentItemId ? matchingMap.get(currentItemId) : undefined;
-  const currentBasket = currentItemId ? basketMap.get(currentItemId) : undefined;
 
   // Shuffled MC options
   const shuffledOptions = useMemo(() => {
@@ -210,14 +197,14 @@ export const PracticeSession: React.FC<PracticeSessionProps> = ({
         allQuestions,
         passageFills,
         matchingExercises,
-        basketExercises,
+        basketExercises: [],
         queue: overrides?.queue || queue,
         currentQueueIndex: overrides?.currentQueueIndex ?? currentIndex,
         answeredCorrectly: Array.from(overrides?.answeredCorrectly || answeredCorrectly),
         answeredIncorrectly: Array.from(overrides?.answeredIncorrectly || answeredIncorrectly),
       });
     },
-    [allQuestions, passageFills, matchingExercises, basketExercises, queue, currentIndex, answeredCorrectly, answeredIncorrectly, onStateChange]
+    [allQuestions, passageFills, matchingExercises, queue, currentIndex, answeredCorrectly, answeredIncorrectly, onStateChange]
   );
 
   // MC Check
@@ -281,7 +268,6 @@ export const PracticeSession: React.FC<PracticeSessionProps> = ({
     allQuestions.forEach(q => allItemIds.add(q.id));
     passageFills.forEach(p => allItemIds.add(p.id));
     matchingExercises.forEach(m => allItemIds.add(m.id));
-    basketExercises.forEach(b => allItemIds.add(b.id));
 
     const allAnswered = [...allItemIds].every(id => answeredCorrectly.has(id));
     if (allAnswered) {
@@ -292,7 +278,7 @@ export const PracticeSession: React.FC<PracticeSessionProps> = ({
     const nextIndex = currentIndex + 1;
 
     if (nextIndex >= queue.length) {
-      const moreIds = generateMoreQueue(allQuestions, passageFills, matchingExercises, basketExercises, answeredCorrectly, answeredIncorrectly);
+      const moreIds = generateMoreQueue(allQuestions, passageFills, matchingExercises, answeredCorrectly, answeredIncorrectly);
       const newQueue = [...queue, ...moreIds];
       setQueue(newQueue);
       setCurrentIndex(nextIndex);
@@ -301,7 +287,7 @@ export const PracticeSession: React.FC<PracticeSessionProps> = ({
       setCurrentIndex(nextIndex);
       persistState({ currentQueueIndex: nextIndex });
     }
-  }, [allQuestions, passageFills, matchingExercises, basketExercises, answeredCorrectly, answeredIncorrectly, currentIndex, queue, onComplete, persistState]);
+  }, [allQuestions, passageFills, matchingExercises, answeredCorrectly, answeredIncorrectly, currentIndex, queue, onComplete, persistState]);
 
   if (!currentItemId) {
     return (
@@ -375,24 +361,6 @@ export const PracticeSession: React.FC<PracticeSessionProps> = ({
             </span>
           </div>
           <WordMatching exercise={currentMatching} onComplete={handleInteractiveComplete} />
-          {feedbackAndNext}
-        </div>
-      </div>
-    );
-  }
-
-  if (currentBasket) {
-    return (
-      <div className="h-full flex flex-col overflow-y-auto px-3 sm:px-5 lg:px-8 py-6">
-        <div className="w-full max-w-3xl mx-auto animate-fade-in" key={`${currentItemId}-${currentIndex}`}>
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-xs font-medium text-stone-400">Exercise {currentIndex + 1}</span>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-stone-100 text-stone-600 rounded-full text-[11px] font-semibold">
-              <Layers className="w-3 h-3" />
-              Synonym Baskets
-            </span>
-          </div>
-          <SynonymBasket exercise={currentBasket} onComplete={handleInteractiveComplete} />
           {feedbackAndNext}
         </div>
       </div>

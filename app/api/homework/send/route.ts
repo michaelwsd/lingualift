@@ -10,7 +10,6 @@ import {
   PracticeQuestion,
   PassageFillExercise,
   WordMatchingExercise,
-  SynonymBasketExercise,
   GeneratedExercises,
 } from '@/types';
 
@@ -163,44 +162,6 @@ function buildWordMatchingExercises(words: CollectedWord[]): WordMatchingExercis
   }));
 }
 
-function buildSynonymBasketExercises(synGroups: SynonymGroup[], collectedWords: CollectedWord[]): SynonymBasketExercise[] {
-  const validGroups = synGroups.filter(g => g.synonyms.length > 0);
-  if (validGroups.length < 2) return [];
-
-  const partitions = partitionItems(validGroups);
-
-  return partitions.map((partition, i) => {
-    const baskets = partition.map(g => {
-      const cw = collectedWords.find(w => w.word.toLowerCase() === g.word.toLowerCase());
-      return { id: cw?.id || g.word, word: g.word };
-    });
-
-    const synonymPool: { key: string; text: string; correctBasketId: string }[] = [];
-    partition.forEach(g => {
-      const cw = collectedWords.find(w => w.word.toLowerCase() === g.word.toLowerCase());
-      const basketId = cw?.id || g.word;
-      const syns = shuffle(g.synonyms).slice(0, Math.min(5, Math.max(3, g.synonyms.length)));
-      syns.forEach((syn, j) => {
-        synonymPool.push({
-          key: `${basketId}_syn_${j}`,
-          text: syn,
-          correctBasketId: basketId,
-        });
-      });
-    });
-
-    return {
-      id: `synonym_basket_${i}`,
-      wordIds: partition.map(g => {
-        const cw = collectedWords.find(w => w.word.toLowerCase() === g.word.toLowerCase());
-        return cw?.id || g.word;
-      }),
-      baskets,
-      synonymPool: shuffle(synonymPool),
-    };
-  });
-}
-
 async function buildPassageFillExercises(words: CollectedWord[], allWordTexts: string[]): Promise<PassageFillExercise[]> {
   const groups = partitionItems(words);
   const exercises: PassageFillExercise[] = [];
@@ -256,10 +217,9 @@ export async function POST(request: Request) {
     // Phase 2: Build all exercises (passage fill calls Gemini too)
     const allWordTexts = collectedWords.map(w => w.word);
 
-    const [practiceQuestions, wordMatchingExercises, synonymBasketExercises, passageFillExercises] = await Promise.all([
+    const [practiceQuestions, wordMatchingExercises, passageFillExercises] = await Promise.all([
       Promise.resolve(buildPracticeQuestions(mcDefinitions, mcSynonyms, collectedWords, synonymGroups)),
       Promise.resolve(buildWordMatchingExercises(collectedWords)),
-      Promise.resolve(buildSynonymBasketExercises(synonymGroups, collectedWords)),
       buildPassageFillExercises(collectedWords, allWordTexts),
     ]);
 
@@ -267,7 +227,7 @@ export async function POST(request: Request) {
       practiceQuestions,
       passageFillExercises,
       wordMatchingExercises,
-      synonymBasketExercises,
+      synonymBasketExercises: [],
     };
 
     // Prepare cross-matching data (for teacher preview backward compat)

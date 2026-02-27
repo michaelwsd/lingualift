@@ -118,7 +118,14 @@ export const PassageFill: React.FC<PassageFillProps> = ({ exercise, onComplete }
               : 'border-stone-300 bg-stone-50 text-stone-400'
           }`}
         >
-          {placedWord || '___'}
+          {isIncorrect ? (
+            <span className="inline-flex flex-col items-center gap-0.5">
+              <span className="line-through opacity-60">{placedWord}</span>
+              <span className="text-emerald-700 font-semibold text-xs">{exercise.answers[blankIndex]}</span>
+            </span>
+          ) : (
+            <>{placedWord || '___'}</>
+          )}
           {isCorrect && <Check className="w-3 h-3 ml-1" />}
           {isIncorrect && <X className="w-3 h-3 ml-1" />}
         </span>

@@ -57,8 +57,7 @@ export default function HomeworkSessionPage() {
           if (practiceState) {
             const total = (practiceState.allQuestions?.length || 0)
               + (practiceState.passageFills?.length || 0)
-              + (practiceState.matchingExercises?.length || 0)
-              + (practiceState.basketExercises?.length || 0);
+              + (practiceState.matchingExercises?.length || 0);
             setTotalQuestions(total);
             setCorrectCount(practiceState.answeredCorrectly?.length || 0);
           }
@@ -120,8 +119,7 @@ export default function HomeworkSessionPage() {
   const handlePracticeStateChange = useCallback((state: PracticeSessionState) => {
     const total = state.allQuestions.length
       + (state.passageFills?.length || 0)
-      + (state.matchingExercises?.length || 0)
-      + (state.basketExercises?.length || 0);
+      + (state.matchingExercises?.length || 0);
     setTotalQuestions(total);
     setCorrectCount(state.answeredCorrectly.length);
 
