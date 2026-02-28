@@ -69,7 +69,22 @@ function buildPracticeQuestions(
   const questions: PracticeQuestion[] = [];
   const allWordTexts = collectedWords.map(w => w.word);
 
-  // MC Definition
+  // Build word→definition lookup from collected words
+  const wordDefLookup: Record<string, string> = {};
+  for (const cw of collectedWords) {
+    wordDefLookup[cw.word.toLowerCase()] = cw.meaning;
+  }
+
+  function getOptionDefs(options: string[], extraDefs?: Record<string, string>): Record<string, string> {
+    const defs: Record<string, string> = {};
+    for (const opt of options) {
+      const key = opt.toLowerCase();
+      defs[key] = extraDefs?.[key] || wordDefLookup[key] || '';
+    }
+    return defs;
+  }
+
+  // MC Definition — options are definitions, not words; no optionDefinitions needed
   for (const q of mcDefinitions) {
     const others = q.options.filter(o => o !== q.correctDefinition);
     questions.push({
@@ -82,50 +97,56 @@ function buildPracticeQuestions(
     });
   }
 
-  // MC Synonym
+  // MC Synonym — options are synonym words; use Gemini-provided definitions
   for (const q of mcSynonyms) {
     const others = q.options.filter(o => o !== q.correctSynonym);
+    const opts = shuffle([q.correctSynonym, ...shuffle(others).slice(0, 3)]);
     questions.push({
       id: `${q.wordId}_mc_synonym`,
       wordId: q.wordId,
       type: 'mc_synonym',
       prompt: q.word,
-      options: shuffle([q.correctSynonym, ...shuffle(others).slice(0, 3)]),
+      options: opts,
       correctAnswer: q.correctSynonym,
+      optionDefinitions: getOptionDefs(opts, q.optionDefinitions),
     });
   }
 
-  // Matching (definition → word)
+  // Matching (definition → word) — options are vocab words
   for (const cw of collectedWords) {
     const distractors = pickDistractors(allWordTexts, cw.word, 3);
+    const opts = shuffle([cw.word, ...distractors]);
     questions.push({
       id: `${cw.id}_matching`,
       wordId: cw.id,
       type: 'matching',
       prompt: cw.meaning,
-      options: shuffle([cw.word, ...distractors]),
+      options: opts,
       correctAnswer: cw.word,
+      optionDefinitions: getOptionDefs(opts),
     });
   }
 
-  // Fill-in-blank (from example sentence)
+  // Fill-in-blank (from example sentence) — options are vocab words
   for (const cw of collectedWords) {
     const regex = new RegExp(`\\b${escapeRegex(cw.word)}\\b`, 'gi');
     const blanked = cw.exampleSentence.replace(regex, '______');
     if (blanked !== cw.exampleSentence) {
       const distractors = pickDistractors(allWordTexts, cw.word, 3);
+      const opts = shuffle([cw.word, ...distractors]);
       questions.push({
         id: `${cw.id}_fill_in_blank`,
         wordId: cw.id,
         type: 'fill_in_blank',
         prompt: blanked,
-        options: shuffle([cw.word, ...distractors]),
+        options: opts,
         correctAnswer: cw.word,
+        optionDefinitions: getOptionDefs(opts),
       });
     }
   }
 
-  // Grouping (synonym → word)
+  // Grouping (synonym → word) — options are vocab words
   const groupHeaders = synonymGroups.map(g => g.word);
   if (groupHeaders.length >= 2) {
     for (const group of synonymGroups) {
@@ -137,13 +158,15 @@ function buildPracticeQuestions(
         const wordId = wordEntry?.id || group.word;
         const distractorHeaders = groupHeaders.filter(h => h !== group.word);
         const picked = shuffle(distractorHeaders).slice(0, 3);
+        const opts = shuffle([group.word, ...picked]);
         questions.push({
           id: `${wordId}_grouping`,
           wordId,
           type: 'grouping',
           prompt: synonym,
-          options: shuffle([group.word, ...picked]),
+          options: opts,
           correctAnswer: group.word,
+          optionDefinitions: getOptionDefs(opts),
         });
       }
     }

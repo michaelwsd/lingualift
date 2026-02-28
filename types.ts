@@ -73,6 +73,7 @@ export interface MCSynonymQuestion {
   word: string;
   correctSynonym: string;
   options: string[];
+  optionDefinitions?: Record<string, string>;
 }
 
 export interface CrossMatchingData {
@@ -96,6 +97,7 @@ export interface PracticeQuestion {
   prompt: string;
   options: string[];
   correctAnswer: string;
+  optionDefinitions?: Record<string, string>;
 }
 
 export interface PassageFillExercise {

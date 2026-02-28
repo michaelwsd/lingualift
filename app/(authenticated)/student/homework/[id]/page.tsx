@@ -29,6 +29,12 @@ export default function HomeworkSessionPage() {
 
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Always-current ref for beforeunload (avoids stale closure)
+  const latestStateRef = useRef({ currentPhase, exercisesCompleted, answersGiven });
+  useEffect(() => {
+    latestStateRef.current = { currentPhase, exercisesCompleted, answersGiven };
+  }, [currentPhase, exercisesCompleted, answersGiven]);
+
   // Load assignment + progress
   useEffect(() => {
     const load = async () => {
@@ -86,17 +92,18 @@ export default function HomeworkSessionPage() {
     [id]
   );
 
-  // Save on beforeunload
+  // Save on beforeunload — uses ref so handler never has stale state
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      const { currentPhase: phase, exercisesCompleted: completed, answersGiven: answers } = latestStateRef.current;
       navigator.sendBeacon(
         `/api/homework/${id}/progress`,
         new Blob(
           [JSON.stringify({
-            currentPhase,
-            exercisesCompleted,
-            answersGiven,
+            currentPhase: phase,
+            exercisesCompleted: completed,
+            answersGiven: answers,
           })],
           { type: 'application/json' }
         )
@@ -104,7 +111,7 @@ export default function HomeworkSessionPage() {
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [id, currentPhase, exercisesCompleted, answersGiven]);
+  }, [id]);
 
   const advancePhase = useCallback((completedPhase: HomeworkPhase) => {
     const currentIdx = PHASE_ORDER.indexOf(completedPhase);
@@ -125,6 +132,8 @@ export default function HomeworkSessionPage() {
 
     setAnswersGiven(prev => {
       const updated = { ...prev, practice: state };
+      // Update ref immediately so beforeunload always has latest state
+      latestStateRef.current = { ...latestStateRef.current, answersGiven: updated };
       debouncedSave('practice', exercisesCompleted, updated);
       return updated;
     });

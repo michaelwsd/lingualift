@@ -355,9 +355,21 @@ const MC_SYNONYMS_SCHEMA: Schema = {
             type: Type.ARRAY,
             items: { type: Type.STRING },
             description: "Exactly 4 real English words that are NOT synonyms of the target word"
+          },
+          optionDefinitions: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                word: { type: Type.STRING, description: "The option word" },
+                definition: { type: Type.STRING, description: "A brief, simple definition of this word" }
+              },
+              required: ["word", "definition"]
+            },
+            description: "A brief definition for each option word (correctSynonym + all 4 distractors). Must have exactly 5 entries."
           }
         },
-        required: ["word", "correctSynonym", "distractors"]
+        required: ["word", "correctSynonym", "distractors", "optionDefinitions"]
       }
     }
   },
@@ -454,7 +466,8 @@ IMPORTANT:
 - Distractors must be real, common English words that an EAL student would recognize
 - Distractors should NOT be synonyms or near-synonyms of the target word
 - All 5 options (1 correct + 4 distractors) should be similar in complexity
-- Do not reuse any word across different questions' options`,
+- Do not reuse any word across different questions' options
+- For EACH question, provide optionDefinitions: a brief, simple definition for every option word (the correct synonym AND all 4 distractors). Each definition should be 1 short sentence.`,
     config: {
       responseMimeType: "application/json",
       responseSchema: MC_SYNONYMS_SCHEMA,
@@ -466,12 +479,21 @@ IMPORTANT:
   if (!text) throw new Error("No MC synonyms generated");
 
   const data = JSON.parse(text);
-  return data.questions.map((q: any, i: number) => ({
-    wordId: words[i].id,
-    word: words[i].word,
-    correctSynonym: q.correctSynonym,
-    options: shuffle([q.correctSynonym, ...q.distractors.slice(0, 4)]),
-  }));
+  return data.questions.map((q: any, i: number) => {
+    const optionDefs: Record<string, string> = {};
+    if (Array.isArray(q.optionDefinitions)) {
+      for (const od of q.optionDefinitions) {
+        optionDefs[od.word.toLowerCase()] = od.definition;
+      }
+    }
+    return {
+      wordId: words[i].id,
+      word: words[i].word,
+      correctSynonym: q.correctSynonym,
+      options: shuffle([q.correctSynonym, ...q.distractors.slice(0, 4)]),
+      optionDefinitions: optionDefs,
+    };
+  });
 };
 
 export const generateHomeworkSynonyms = async (words: string[]): Promise<SynonymGroup[]> => {

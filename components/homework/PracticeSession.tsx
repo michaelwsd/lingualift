@@ -153,6 +153,15 @@ export const PracticeSession: React.FC<PracticeSessionProps> = ({
   const [isChecked, setIsChecked] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
 
+  // Word definition lookup (word text → CollectedWord)
+  const wordDefMap = useMemo(() => {
+    const map = new Map<string, { meaning: string; exampleSentence: string }>();
+    for (const w of assignment.collected_words) {
+      map.set(w.word.toLowerCase(), { meaning: w.meaning, exampleSentence: w.exampleSentence });
+    }
+    return map;
+  }, [assignment.collected_words]);
+
   // Lookups
   const questionMap = useMemo(() => {
     const map = new Map<string, PracticeQuestion>();
@@ -379,8 +388,8 @@ export const PracticeSession: React.FC<PracticeSessionProps> = ({
   const config = TYPE_CONFIG[currentMCQuestion.type];
 
   return (
-    <div className="h-full flex flex-col items-center justify-center px-3 sm:px-5 lg:px-8 py-6">
-      <div className="w-full max-w-xl animate-fade-in" key={`${currentMCQuestion.id}-${currentIndex}`}>
+    <div className="h-full overflow-y-auto px-3 sm:px-5 lg:px-8 py-6">
+      <div className="w-full max-w-xl mx-auto animate-fade-in" key={`${currentMCQuestion.id}-${currentIndex}`}>
         {/* Question counter + type badge */}
         <div className="flex items-center justify-between mb-6">
           <span className="text-xs font-medium text-stone-400">
@@ -498,8 +507,34 @@ export const PracticeSession: React.FC<PracticeSessionProps> = ({
           </div>
         </div>
 
+        {/* Word definitions after check (skip for mc_definition — options ARE definitions) */}
+        {isChecked && currentMCQuestion.type !== 'mc_definition' && (
+          <div className="mt-3 rounded-xl border border-stone-200/80 bg-stone-50/50 p-4">
+            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-3">Word Definitions</p>
+            <div className="space-y-2.5">
+              {shuffledOptions.map((option) => {
+                const key = option.toLowerCase();
+                const def = currentMCQuestion.optionDefinitions?.[key] || wordDefMap.get(key)?.meaning;
+                const isAnswer = option === currentMCQuestion.correctAnswer;
+                return (
+                  <div key={option} className="flex items-start gap-2.5">
+                    <span className={`flex-none text-sm font-semibold capitalize ${isAnswer ? 'text-emerald-700' : 'text-slate-700'}`}>
+                      {option}
+                    </span>
+                    {def ? (
+                      <span className="text-xs text-stone-500 pt-0.5">&mdash; {def}</span>
+                    ) : (
+                      <span className="text-xs text-stone-400 italic pt-0.5">definition not available</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Check / Next button */}
-        <div className="flex items-center justify-center gap-3 mt-4">
+        <div className="flex items-center justify-center gap-3 mt-4 pb-4">
           {isChecked ? (
             <button
               onClick={handleNext}
