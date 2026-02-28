@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   HomeworkAssignment,
   PracticeQuestion,
@@ -148,6 +148,30 @@ export const PracticeSession: React.FC<PracticeSessionProps> = ({
     () => new Set(savedState?.answeredIncorrectly || [])
   );
 
+  // On mount: if saved index is past queue end, extend queue or complete
+  const [initialized, setInitialized] = useState(!savedState || (savedState.currentQueueIndex || 0) < initialQueue.length);
+  useEffect(() => {
+    if (initialized) return;
+    // Check if all items are answered correctly
+    const allItemIds = new Set<string>();
+    allQuestions.forEach(q => allItemIds.add(q.id));
+    passageFills.forEach(p => allItemIds.add(p.id));
+    matchingExercises.forEach(m => allItemIds.add(m.id));
+    const allAnswered = [...allItemIds].every(id => answeredCorrectly.has(id));
+    if (allAnswered) {
+      onComplete();
+      setInitialized(true);
+      return;
+    }
+    // Extend queue
+    const moreIds = generateMoreQueue(allQuestions, passageFills, matchingExercises, answeredCorrectly, answeredIncorrectly);
+    const newQueue = [...queue, ...moreIds];
+    setQueue(newQueue);
+    persistState({ queue: newQueue });
+    setInitialized(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // UI state
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [isChecked, setIsChecked] = useState(false);
@@ -228,7 +252,7 @@ export const PracticeSession: React.FC<PracticeSessionProps> = ({
       const newCorrect = new Set(answeredCorrectly);
       newCorrect.add(currentMCQuestion.id);
       setAnsweredCorrectly(newCorrect);
-      persistState({ answeredCorrectly: newCorrect });
+      persistState({ answeredCorrectly: newCorrect, currentQueueIndex: currentIndex + 1 });
     } else {
       const newIncorrect = new Set(answeredIncorrectly);
       newIncorrect.add(currentMCQuestion.id);
@@ -238,7 +262,7 @@ export const PracticeSession: React.FC<PracticeSessionProps> = ({
       const newQueue = [...queue];
       newQueue.splice(reinsertPos, 0, currentMCQuestion.id);
       setQueue(newQueue);
-      persistState({ queue: newQueue, answeredIncorrectly: newIncorrect });
+      persistState({ queue: newQueue, answeredIncorrectly: newIncorrect, currentQueueIndex: currentIndex + 1 });
     }
   }, [currentMCQuestion, selectedOption, answeredCorrectly, answeredIncorrectly, currentIndex, queue, persistState]);
 
@@ -253,7 +277,7 @@ export const PracticeSession: React.FC<PracticeSessionProps> = ({
       const newCorrect = new Set(answeredCorrectly);
       newCorrect.add(currentItemId);
       setAnsweredCorrectly(newCorrect);
-      persistState({ answeredCorrectly: newCorrect });
+      persistState({ answeredCorrectly: newCorrect, currentQueueIndex: currentIndex + 1 });
     } else {
       const newIncorrect = new Set(answeredIncorrectly);
       newIncorrect.add(currentItemId);
@@ -263,7 +287,7 @@ export const PracticeSession: React.FC<PracticeSessionProps> = ({
       const newQueue = [...queue];
       newQueue.splice(reinsertPos, 0, currentItemId);
       setQueue(newQueue);
-      persistState({ queue: newQueue, answeredIncorrectly: newIncorrect });
+      persistState({ queue: newQueue, answeredIncorrectly: newIncorrect, currentQueueIndex: currentIndex + 1 });
     }
   }, [currentItemId, answeredCorrectly, answeredIncorrectly, currentIndex, queue, persistState]);
 
