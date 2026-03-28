@@ -8,6 +8,7 @@ import { HomeworkProgressBar } from '@/components/homework/HomeworkProgressBar';
 import { VocabReview } from '@/components/homework/VocabReview';
 import { PracticeSession } from '@/components/homework/PracticeSession';
 import { CompletionScreen } from '@/components/homework/CompletionScreen';
+import { ComprehensionSession } from '@/components/homework/ComprehensionSession';
 import { Loader2, LogOut } from 'lucide-react';
 
 const PHASE_ORDER: HomeworkPhase[] = ['vocab_review', 'practice', 'completed'];
@@ -48,7 +49,8 @@ export default function HomeworkSessionPage() {
           if (phase === 'completed') {
             setCurrentPhase('completed');
           } else if (phase === 'vocab_review') {
-            setCurrentPhase('vocab_review');
+            // Comprehension homework skips vocab_review
+            setCurrentPhase(hw.homework_type === 'comprehension' ? 'practice' : 'vocab_review');
           } else if (phase === 'practice') {
             setCurrentPhase('practice');
           } else {
@@ -67,6 +69,9 @@ export default function HomeworkSessionPage() {
             setTotalQuestions(total);
             setCorrectCount(practiceState.answeredCorrectly?.length || 0);
           }
+        } else if (hw.homework_type === 'comprehension') {
+          // Comprehension homework starts directly (no vocab_review phase)
+          setCurrentPhase('practice');
         }
       } catch {
         router.push('/student/homework');
@@ -176,6 +181,45 @@ export default function HomeworkSessionPage() {
   }
 
   if (!assignment) return null;
+
+  const isComprehension = assignment.homework_type === 'comprehension';
+
+  const handleComprehensionStateChange = (comprehensionAnswers: Record<string, any>) => {
+    setAnswersGiven(prev => {
+      const updated = { ...prev, comprehension: comprehensionAnswers };
+      latestStateRef.current = { ...latestStateRef.current, answersGiven: updated };
+      debouncedSave(currentPhase, exercisesCompleted, updated);
+      return updated;
+    });
+  };
+
+  const handleComprehensionComplete = () => {
+    const newCompleted = [...exercisesCompleted, 'comprehension'];
+    setExercisesCompleted(newCompleted);
+    setCurrentPhase('completed');
+    debouncedSave('completed', newCompleted, answersGiven);
+  };
+
+  if (isComprehension) {
+    return (
+      <div className="h-full flex flex-col">
+        {currentPhase === 'completed' ? (
+          <CompletionScreen
+            totalWords={assignment.passage.questions?.length || 0}
+            label="questions answered"
+          />
+        ) : (
+          <ComprehensionSession
+            passage={assignment.passage}
+            savedAnswers={answersGiven.comprehension || undefined}
+            onStateChange={handleComprehensionStateChange}
+            onComplete={handleComprehensionComplete}
+            onExit={handleExit}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col">

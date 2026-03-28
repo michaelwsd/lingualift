@@ -140,6 +140,8 @@ export interface GeneratedExercises {
   synonymBasketExercises: SynonymBasketExercise[];
 }
 
+export type HomeworkType = 'vocabulary' | 'comprehension';
+
 export interface HomeworkAssignment {
   id: string;
   teacher_id: string;
@@ -147,6 +149,7 @@ export interface HomeworkAssignment {
   student_name: string;
   assigned_at: string;
   status: 'pending' | 'in_progress' | 'completed';
+  homework_type: HomeworkType;
   passage: Passage;
   collected_words: CollectedWord[];
   mc_definitions: MCDefinitionQuestion[];

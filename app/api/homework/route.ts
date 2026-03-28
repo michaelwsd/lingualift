@@ -11,7 +11,7 @@ export async function GET() {
 
     const { data, error } = await supabaseAdmin
       .from('homework_assignments')
-      .select('id, student_name, assigned_at, status, passage, collected_words')
+      .select('id, student_name, assigned_at, status, homework_type, passage, collected_words')
       .eq('student_id', userId)
       .order('assigned_at', { ascending: false });
 
@@ -26,10 +26,12 @@ export async function GET() {
       studentName: a.student_name,
       assignedAt: a.assigned_at,
       status: a.status,
+      homeworkType: a.homework_type || 'vocabulary',
       passageId: a.passage?.id || '',
       passageTitle: a.passage?.title || 'Untitled',
       passageType: a.passage?.type || '',
       wordCount: Array.isArray(a.collected_words) ? a.collected_words.length : 0,
+      questionCount: Array.isArray(a.passage?.questions) ? a.passage.questions.length : 0,
     }));
 
     return NextResponse.json({ assignments });

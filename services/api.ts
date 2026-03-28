@@ -73,10 +73,12 @@ export interface HomeworkListItem {
   studentName: string;
   assignedAt: string;
   status: 'pending' | 'in_progress' | 'completed';
+  homeworkType: 'vocabulary' | 'comprehension';
   passageId: string;
   passageTitle: string;
   passageType: string;
   wordCount: number;
+  questionCount?: number;
   progressStatus?: 'not_started' | 'started' | 'in_progress' | 'completed';
   completionPercent?: number;
 }

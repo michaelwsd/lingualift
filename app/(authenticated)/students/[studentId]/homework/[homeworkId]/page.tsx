@@ -13,6 +13,9 @@ import {
   Layers,
   PenLine,
   Check,
+  Brain,
+  CheckCircle2,
+  Lightbulb,
 } from 'lucide-react';
 
 export default function HomeworkQuestionsPage() {
@@ -60,6 +63,8 @@ export default function HomeworkQuestionsPage() {
 
   if (!assignment) return null;
 
+  const isComprehension = assignment.homework_type === 'comprehension';
+
   const statusConfig = {
     pending: { label: 'New', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
     in_progress: { label: 'In Progress', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
@@ -68,7 +73,7 @@ export default function HomeworkQuestionsPage() {
   const status = statusConfig[assignment.status];
 
   const exercises = assignment.generated_exercises;
-  const hasExercises = exercises && (
+  const hasExercises = !isComprehension && exercises && (
     exercises.practiceQuestions.length > 0 ||
     exercises.passageFillExercises.length > 0 ||
     exercises.wordMatchingExercises.length > 0 ||
@@ -111,35 +116,99 @@ export default function HomeworkQuestionsPage() {
             </span>
           </div>
           <p className="text-sm text-stone-500">
-            {assignment.collected_words.length} words &middot; {assignment.passage.type}
-            {totalItems > 0 && <> &middot; {totalItems} exercises</>}
+            {isComprehension ? (
+              <>{assignment.passage.questions?.length || 0} questions &middot; {assignment.passage.type}</>
+            ) : (
+              <>{assignment.collected_words.length} words &middot; {assignment.passage.type}</>
+            )}
+            {!isComprehension && totalItems > 0 && <> &middot; {totalItems} exercises</>}
             {progress && (
               <> &middot; Phase: {progress.current_phase.replace('_', ' ')}</>
             )}
+            <span className={`ml-2 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide border ${
+              isComprehension ? 'bg-teal-50 text-teal-700 border-teal-200' : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+            }`}>
+              {isComprehension ? 'Reading Comprehension' : 'Vocabulary'}
+            </span>
           </p>
         </div>
 
-        {/* Collected Words */}
-        <Section title="Vocabulary Words" icon={<BookOpen className="w-4 h-4" />} count={assignment.collected_words.length}>
-          <div className="space-y-2">
-            {assignment.collected_words.map((word, i) => (
-              <div
-                key={word.id}
-                className="bg-white rounded-lg border border-stone-200/80 p-4 animate-card-in"
-                style={{ animationDelay: `${i * 40}ms` }}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-900 capitalize">{word.word}</h4>
-                    <p className="text-xs text-stone-500 mt-0.5">{word.meaning}</p>
-                    <p className="text-xs text-stone-400 italic mt-1">&ldquo;{word.exampleSentence}&rdquo;</p>
+        {/* Comprehension Questions (for comprehension homework) */}
+        {isComprehension && assignment.passage.questions?.length > 0 && (
+          <Section title="Comprehension Questions" icon={<Brain className="w-4 h-4" />} count={assignment.passage.questions.length}>
+            <div className="space-y-3">
+              {assignment.passage.questions.map((q, i) => {
+                const studentAnswer = progress?.answers_given?.comprehension?.[q.id];
+                return (
+                  <div
+                    key={q.id}
+                    className="bg-white rounded-lg border border-stone-200/80 p-4 animate-card-in"
+                    style={{ animationDelay: `${i * 40}ms` }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="flex-none w-6 h-6 rounded-full bg-teal-50 flex items-center justify-center text-[10px] font-bold text-teal-700">
+                        {i + 1}
+                      </span>
+                      <div className="flex-1 space-y-3">
+                        <p className="text-sm font-medium text-slate-800">{q.question}</p>
+
+                        {studentAnswer?.submitted && (
+                          <div className="bg-blue-50/60 rounded-lg px-3 py-2">
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-blue-500 mb-1">
+                              Student&apos;s Answer
+                            </div>
+                            <p className="text-xs text-slate-700">{studentAnswer.answer}</p>
+                          </div>
+                        )}
+
+                        <div className="bg-stone-50/80 rounded-lg p-3 space-y-2">
+                          <div>
+                            <div className="flex items-center gap-1.5 mb-1 text-emerald-700 text-[10px] font-bold uppercase tracking-wider">
+                              <CheckCircle2 className="w-3 h-3" />
+                              Model Answer
+                            </div>
+                            <p className="text-xs text-slate-700">{q.answer}</p>
+                          </div>
+                          <div className="border-t border-stone-200 pt-2">
+                            <div className="flex items-center gap-1.5 mb-1 text-indigo-600 text-[10px] font-bold uppercase tracking-wider">
+                              <Lightbulb className="w-3 h-3" />
+                              Explanation
+                            </div>
+                            <p className="text-[11px] text-slate-500 italic">{q.explanation}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <span className="text-[10px] text-stone-300 font-medium flex-none">#{i + 1}</span>
+                );
+              })}
+            </div>
+          </Section>
+        )}
+
+        {/* Collected Words (vocabulary homework only) */}
+        {!isComprehension && (
+          <Section title="Vocabulary Words" icon={<BookOpen className="w-4 h-4" />} count={assignment.collected_words.length}>
+            <div className="space-y-2">
+              {assignment.collected_words.map((word, i) => (
+                <div
+                  key={word.id}
+                  className="bg-white rounded-lg border border-stone-200/80 p-4 animate-card-in"
+                  style={{ animationDelay: `${i * 40}ms` }}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900 capitalize">{word.word}</h4>
+                      <p className="text-xs text-stone-500 mt-0.5">{word.meaning}</p>
+                      <p className="text-xs text-stone-400 italic mt-1">&ldquo;{word.exampleSentence}&rdquo;</p>
+                    </div>
+                    <span className="text-[10px] text-stone-300 font-medium flex-none">#{i + 1}</span>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </Section>
+              ))}
+            </div>
+          </Section>
+        )}
 
         {/* Generated Practice Questions by Type */}
         {hasExercises && questionsByType && (

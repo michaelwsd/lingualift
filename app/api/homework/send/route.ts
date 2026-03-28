@@ -265,6 +265,7 @@ export async function POST(request: Request) {
         teacher_id: userId,
         student_id: studentId,
         student_name: studentName,
+        homework_type: 'vocabulary',
         passage,
         collected_words: collectedWords,
         mc_definitions: mcDefinitions,

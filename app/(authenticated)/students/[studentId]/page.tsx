@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { fetchHomeworkByStudent, fetchStudents, fetchPassagesByStudent, deleteHomework, deletePassage, HomeworkListItem, StudentItem, PassageListItem } from '@/services/api';
-import { ArrowLeft, Clock, BookOpen, ChevronRight, Loader2, GraduationCap, Trash2, Eye, PlayCircle, CheckCircle2, Circle, FileText } from 'lucide-react';
+import { ArrowLeft, Clock, BookOpen, ChevronRight, Loader2, GraduationCap, Trash2, Eye, PlayCircle, CheckCircle2, Circle, FileText, Brain } from 'lucide-react';
 
 const progressConfig = {
   not_started: {
@@ -299,13 +299,17 @@ export default function StudentHomeworkListPage() {
                             >
                               <div className="flex items-center justify-between gap-3">
                                 <div className="flex items-center gap-3 min-w-0">
-                                  <div className="w-7 h-7 bg-indigo-50 rounded-md flex items-center justify-center flex-none">
-                                    <GraduationCap className="w-3.5 h-3.5 text-indigo-600" />
+                                  <div className={`w-7 h-7 rounded-md flex items-center justify-center flex-none ${hw.homeworkType === 'comprehension' ? 'bg-teal-50' : 'bg-indigo-50'}`}>
+                                    {hw.homeworkType === 'comprehension' ? (
+                                      <Brain className="w-3.5 h-3.5 text-teal-600" />
+                                    ) : (
+                                      <GraduationCap className="w-3.5 h-3.5 text-indigo-600" />
+                                    )}
                                   </div>
                                   <div className="min-w-0">
                                     <div className="flex items-center gap-2">
                                       <span className="text-sm font-semibold text-slate-800">
-                                        Homework
+                                        {hw.homeworkType === 'comprehension' ? 'Reading Comprehension' : 'Vocabulary Homework'}
                                       </span>
                                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${progress.bg} ${progress.text} ${progress.border}`}>
                                         <ProgressIcon className={`w-2.5 h-2.5 ${progress.iconColor}`} />
@@ -320,10 +324,17 @@ export default function StudentHomeworkListPage() {
                                         <Clock className="w-2.5 h-2.5" />
                                         {formatDate(hw.assignedAt)}
                                       </span>
-                                      <span className="flex items-center gap-1">
-                                        <BookOpen className="w-2.5 h-2.5" />
-                                        {hw.wordCount} words
-                                      </span>
+                                      {hw.homeworkType === 'comprehension' ? (
+                                        <span className="flex items-center gap-1">
+                                          <Brain className="w-2.5 h-2.5" />
+                                          {hw.questionCount || 0} questions
+                                        </span>
+                                      ) : (
+                                        <span className="flex items-center gap-1">
+                                          <BookOpen className="w-2.5 h-2.5" />
+                                          {hw.wordCount} words
+                                        </span>
+                                      )}
                                     </div>
                                   </div>
                                 </div>

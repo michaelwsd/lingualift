@@ -6,10 +6,14 @@ import Link from 'next/link';
 
 interface CompletionScreenProps {
   totalWords: number;
+  label?: string;
 }
 
-export const CompletionScreen: React.FC<CompletionScreenProps> = ({ totalWords }) => {
-  const msg = { text: 'Well done!', sub: `You completed all exercises for ${totalWords} words!` };
+export const CompletionScreen: React.FC<CompletionScreenProps> = ({ totalWords, label }) => {
+  const sub = label
+    ? `You completed all ${totalWords} ${label}!`
+    : `You completed all exercises for ${totalWords} words!`;
+  const msg = { text: 'Well done!', sub };
 
   return (
     <div className="h-full flex items-center justify-center px-3 sm:px-5 lg:px-8">

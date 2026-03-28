@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { fetchHomeworkList, fetchPassages, HomeworkListItem, PassageListItem } from '@/services/api';
-import { GraduationCap, Clock, BookOpen, ChevronRight, Loader2, FileText } from 'lucide-react';
+import { GraduationCap, Clock, BookOpen, ChevronRight, Loader2, FileText, Brain } from 'lucide-react';
 
 interface PassageGroup {
   passageId: string;
@@ -183,6 +183,7 @@ export default function StudentHomeworkPage() {
                   <div className="ml-4 sm:ml-6 mt-1 space-y-1">
                     {group.homework.map((hw) => {
                       const status = statusConfig[hw.status];
+                      const isComprehension = hw.homeworkType === 'comprehension';
 
                       return (
                         <div
@@ -192,13 +193,17 @@ export default function StudentHomeworkPage() {
                         >
                           <div className="px-4 py-3 flex items-center justify-between gap-3">
                             <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-7 h-7 bg-indigo-50 rounded-md flex items-center justify-center flex-none">
-                                <GraduationCap className="w-3.5 h-3.5 text-indigo-600" />
+                              <div className={`w-7 h-7 rounded-md flex items-center justify-center flex-none ${isComprehension ? 'bg-teal-50' : 'bg-indigo-50'}`}>
+                                {isComprehension ? (
+                                  <Brain className="w-3.5 h-3.5 text-teal-600" />
+                                ) : (
+                                  <GraduationCap className="w-3.5 h-3.5 text-indigo-600" />
+                                )}
                               </div>
                               <div className="min-w-0">
                                 <div className="flex items-center gap-2">
                                   <span className="text-sm font-semibold text-slate-800">
-                                    Homework
+                                    {isComprehension ? 'Reading Comprehension' : 'Vocabulary Homework'}
                                   </span>
                                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide border ${status.bg} ${status.text} ${status.border}`}>
                                     {status.label}
@@ -209,10 +214,17 @@ export default function StudentHomeworkPage() {
                                     <Clock className="w-2.5 h-2.5" />
                                     {formatDate(hw.assignedAt)}
                                   </span>
-                                  <span className="flex items-center gap-1">
-                                    <BookOpen className="w-2.5 h-2.5" />
-                                    {hw.wordCount} words
-                                  </span>
+                                  {isComprehension ? (
+                                    <span className="flex items-center gap-1">
+                                      <Brain className="w-2.5 h-2.5" />
+                                      {hw.questionCount || 0} questions
+                                    </span>
+                                  ) : (
+                                    <span className="flex items-center gap-1">
+                                      <BookOpen className="w-2.5 h-2.5" />
+                                      {hw.wordCount} words
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             </div>
