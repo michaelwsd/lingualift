@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Passage, ComprehensionQuestion } from '@/types';
+import { renderInlineMarkdown, applyInlineMarkdown } from '@/lib/render-markdown';
 import { BookOpen, CheckCircle2, Send, Eye, Lightbulb, Trophy, LogOut, Loader2, XCircle, Star } from 'lucide-react';
 
 interface AnswerState {
@@ -139,32 +140,6 @@ export const ComprehensionSession: React.FC<ComprehensionSessionProps> = ({
 
   const paragraphs = passage.content.split(/\n\s*\n/).filter(p => p.trim());
 
-  // Convert inline markdown (*italic*, **bold**) in a string to React nodes
-  const renderInlineMarkdown = (text: string, keyPrefix: string): React.ReactNode[] => {
-    const nodes: React.ReactNode[] = [];
-    // Match **bold** or *italic*
-    const regex = /(\*\*(.+?)\*\*|\*(.+?)\*)/g;
-    let lastIndex = 0;
-    let match;
-    while ((match = regex.exec(text)) !== null) {
-      if (match.index > lastIndex) {
-        nodes.push(text.slice(lastIndex, match.index));
-      }
-      if (match[2]) {
-        // **bold**
-        nodes.push(<strong key={`${keyPrefix}-b-${match.index}`}>{match[2]}</strong>);
-      } else if (match[3]) {
-        // *italic*
-        nodes.push(<em key={`${keyPrefix}-i-${match.index}`}>{match[3]}</em>);
-      }
-      lastIndex = regex.lastIndex;
-    }
-    if (lastIndex < text.length) {
-      nodes.push(text.slice(lastIndex));
-    }
-    return nodes.length > 0 ? nodes : [text];
-  };
-
   const renderParagraph = (text: string, pIdx: number) => {
     if (highlightedTexts.length === 0) {
       return <p key={pIdx} className="mb-5">{renderInlineMarkdown(text.trim(), `p${pIdx}`)}</p>;
@@ -198,11 +173,7 @@ export const ComprehensionSession: React.FC<ComprehensionSessionProps> = ({
       result = newResult;
     }
 
-    // Apply inline markdown to remaining string fragments
-    const finalResult = result.map((part, i) =>
-      typeof part === 'string' ? <React.Fragment key={`md-${pIdx}-${i}`}>{renderInlineMarkdown(part, `p${pIdx}-${i}`)}</React.Fragment> : part
-    );
-    return <p key={pIdx} className="mb-5">{finalResult}</p>;
+    return <p key={pIdx} className="mb-5">{applyInlineMarkdown(result, `p${pIdx}`)}</p>;
   };
 
   const renderScore = (score: number) => {

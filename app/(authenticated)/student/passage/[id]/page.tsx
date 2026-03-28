@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 import { fetchPassage, explainWord } from '@/services/api';
 import { Passage } from '@/types';
 import { ArrowLeft, BookOpen, Loader2, Lightbulb, X } from 'lucide-react';
+import { renderInlineMarkdown } from '@/lib/render-markdown';
 
 interface SelectionPopover {
   text: string;
@@ -189,7 +190,7 @@ export default function PassageReaderPage() {
               })
               .filter(Boolean)
               .map((para, i) => (
-                <p key={i}>{para}</p>
+                <p key={i}>{renderInlineMarkdown(para, `p${i}`)}</p>
               ))}
           </article>
 

@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Passage, ComprehensionQuestion } from '@/types';
+import { renderInlineMarkdown, applyInlineMarkdown } from '@/lib/render-markdown';
 import { ChevronDown, CheckCircle2, Lightbulb, BookOpen, Eye } from 'lucide-react';
 
 interface ComprehensionStageProps {
@@ -35,7 +36,7 @@ export const ComprehensionStage: React.FC<ComprehensionStageProps> = ({ passage 
 
   const renderParagraph = (text: string, pIdx: number) => {
     if (highlightedTexts.length === 0) {
-      return <p key={pIdx} className="mb-5">{text.trim()}</p>;
+      return <p key={pIdx} className="mb-5">{renderInlineMarkdown(text.trim(), `p${pIdx}`)}</p>;
     }
 
     let result: React.ReactNode[] = [text.trim()];
@@ -66,7 +67,7 @@ export const ComprehensionStage: React.FC<ComprehensionStageProps> = ({ passage 
       result = newResult;
     }
 
-    return <p key={pIdx} className="mb-5">{result}</p>;
+    return <p key={pIdx} className="mb-5">{applyInlineMarkdown(result, `p${pIdx}`)}</p>;
   };
 
   return (

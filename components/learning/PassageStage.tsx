@@ -3,8 +3,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Passage, CollectedWord } from '@/types';
+import { renderInlineMarkdown } from '@/lib/render-markdown';
 import { explainWord } from '@/services/api';
-import { X, Loader2, Plus, BookOpen, Lightbulb, Trash2, Volume2, Sparkles } from 'lucide-react';
+import { X, Loader2, Plus, BookOpen, Lightbulb, Trash2, Volume2, Sparkles, Wand2 } from 'lucide-react';
 import { speak } from '@/lib/speak';
 
 interface PassageStageProps {
@@ -38,6 +39,7 @@ export const PassageStage: React.FC<PassageStageProps> = ({
   const [selection, setSelection] = useState<SelectionPopover | null>(null);
   const [explanation, setExplanation] = useState<ExplanationPopover | null>(null);
   const [isAddingWord, setIsAddingWord] = useState(false);
+  const [isAutoExtracting, setIsAutoExtracting] = useState(false);
   const passageRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
 
@@ -129,11 +131,42 @@ export const PassageStage: React.FC<PassageStageProps> = ({
 
   const handleSpeak = (word: string) => speak(word);
 
+  const handleAutoExtract = async () => {
+    setIsAutoExtracting(true);
+    try {
+      const res = await fetch('/api/extract-words', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: passage.content,
+          existingWords: collectedWords.map(w => w.word),
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to extract');
+      const { words } = await res.json();
+      const remaining = 30 - collectedWords.length;
+      const toAdd = words.slice(0, Math.max(0, remaining));
+      for (const w of toAdd) {
+        onAddWord({
+          id: crypto.randomUUID(),
+          word: w.word,
+          meaning: w.meaning,
+          exampleSentence: w.exampleSentence,
+          memoryTip: w.memoryTip,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to auto-extract words:', error);
+    } finally {
+      setIsAutoExtracting(false);
+    }
+  };
+
   const paragraphs = passage.content.split(/\n\s*\n/).filter(p => p.trim());
 
   // Highlight collected words in passage text
-  const renderHighlightedText = (text: string) => {
-    if (collectedWords.length === 0) return text;
+  const renderHighlightedText = (text: string, pIdx: number) => {
+    if (collectedWords.length === 0) return renderInlineMarkdown(text, `p${pIdx}`);
 
     // Sort by length (longest first) to prioritize longer phrases
     const sorted = [...collectedWords].sort((a, b) => b.word.length - a.word.length);
@@ -150,7 +183,7 @@ export const PassageStage: React.FC<PassageStageProps> = ({
           </mark>
         );
       }
-      return part;
+      return <React.Fragment key={i}>{renderInlineMarkdown(part, `p${pIdx}-${i}`)}</React.Fragment>;
     });
   };
 
@@ -180,7 +213,7 @@ export const PassageStage: React.FC<PassageStageProps> = ({
               onMouseUp={handleTextSelection}
             >
               {paragraphs.map((para, i) => (
-                <p key={i} className="mb-5">{renderHighlightedText(para.trim())}</p>
+                <p key={i} className="mb-5">{renderHighlightedText(para.trim(), i)}</p>
               ))}
             </article>
 
@@ -264,11 +297,22 @@ export const PassageStage: React.FC<PassageStageProps> = ({
           <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider">
             My Vocabulary
           </h2>
-          {collectedWords.length > 0 && (
-            <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
-              {collectedWords.length} words
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleAutoExtract}
+              disabled={isAutoExtracting}
+              className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-50 rounded-lg transition-colors"
+              title="Auto-select challenging words"
+            >
+              {isAutoExtracting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
+              Auto-select
+            </button>
+            {collectedWords.length > 0 && (
+              <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                {collectedWords.length}
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar pr-1">
