@@ -16,6 +16,8 @@ import {
   Brain,
   CheckCircle2,
   Lightbulb,
+  Star,
+  XCircle,
 } from 'lucide-react';
 
 export default function HomeworkQuestionsPage() {
@@ -136,29 +138,78 @@ export default function HomeworkQuestionsPage() {
         {/* Comprehension Questions (for comprehension homework) */}
         {isComprehension && assignment.passage.questions?.length > 0 && (
           <Section title="Comprehension Questions" icon={<Brain className="w-4 h-4" />} count={assignment.passage.questions.length}>
+            {/* Summary scores */}
+            {(() => {
+              const comprehensionData = progress?.answers_given?.comprehension;
+              if (!comprehensionData) return null;
+              const allAnswers = Object.values(comprehensionData) as Array<{ submitted?: boolean; failed?: boolean; score?: number }>;
+              const answered = allAnswers.filter(a => a.submitted || a.failed);
+              if (answered.length === 0) return null;
+              const totalScore = answered.reduce((sum, a) => sum + (a.score || 0), 0);
+              const maxScore = answered.length * 5;
+              return (
+                <div className="mb-4 px-4 py-3 bg-stone-50 rounded-lg border border-stone-200/80 flex items-center justify-between">
+                  <span className="text-sm font-medium text-slate-700">Total Score</span>
+                  <span className="text-lg font-bold text-slate-900">{totalScore} / {maxScore}</span>
+                </div>
+              );
+            })()}
             <div className="space-y-3">
               {assignment.passage.questions.map((q, i) => {
                 const studentAnswer = progress?.answers_given?.comprehension?.[q.id];
+                const hasScore = studentAnswer && (studentAnswer.submitted || studentAnswer.failed);
+                const score = studentAnswer?.score ?? null;
+                const isFailed = studentAnswer?.failed || false;
+
                 return (
                   <div
                     key={q.id}
-                    className="bg-white rounded-lg border border-stone-200/80 p-4 animate-card-in"
+                    className={`bg-white rounded-lg border p-4 animate-card-in ${
+                      isFailed ? 'border-red-200' : hasScore ? 'border-emerald-200' : 'border-stone-200/80'
+                    }`}
                     style={{ animationDelay: `${i * 40}ms` }}
                   >
                     <div className="flex items-start gap-3">
-                      <span className="flex-none w-6 h-6 rounded-full bg-teal-50 flex items-center justify-center text-[10px] font-bold text-teal-700">
-                        {i + 1}
+                      <span className={`flex-none w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                        isFailed ? 'bg-red-50 text-red-700' : hasScore ? 'bg-emerald-50 text-emerald-700' : 'bg-teal-50 text-teal-700'
+                      }`}>
+                        {isFailed ? <XCircle className="w-3.5 h-3.5" /> : hasScore ? <CheckCircle2 className="w-3.5 h-3.5" /> : i + 1}
                       </span>
                       <div className="flex-1 space-y-3">
-                        <p className="text-sm font-medium text-slate-800">{q.question}</p>
+                        <div className="flex items-start justify-between gap-3">
+                          <p className="text-sm font-medium text-slate-800">{q.question}</p>
+                          {score !== null && (
+                            <div className="flex items-center gap-1 flex-none">
+                              {[0, 1, 2, 3, 4].map(s => (
+                                <Star key={s} className={`w-3.5 h-3.5 ${s < score ? 'text-amber-400 fill-amber-400' : 'text-stone-200'}`} />
+                              ))}
+                              <span className="text-xs font-bold text-slate-600 ml-1">{score}/5</span>
+                            </div>
+                          )}
+                        </div>
 
                         {studentAnswer?.submitted && (
-                          <div className="bg-blue-50/60 rounded-lg px-3 py-2">
-                            <div className="text-[10px] font-bold uppercase tracking-wider text-blue-500 mb-1">
-                              Student&apos;s Answer
+                          <>
+                            <div className="bg-blue-50/60 rounded-lg px-3 py-2">
+                              <div className="text-[10px] font-bold uppercase tracking-wider text-blue-500 mb-1">
+                                Student&apos;s Answer
+                                {studentAnswer.attempts > 1 && (
+                                  <span className="ml-1.5 text-stone-400 normal-case font-medium">({studentAnswer.attempts} attempts)</span>
+                                )}
+                              </div>
+                              <p className="text-xs text-slate-700">{studentAnswer.answer}</p>
                             </div>
-                            <p className="text-xs text-slate-700">{studentAnswer.answer}</p>
-                          </div>
+
+                            {studentAnswer.feedback && (
+                              <div className={`px-3 py-2 rounded-lg text-xs ${
+                                isFailed
+                                  ? 'bg-red-50 border border-red-200 text-red-700'
+                                  : 'bg-emerald-50 border border-emerald-200 text-emerald-700'
+                              }`}>
+                                {studentAnswer.feedback}
+                              </div>
+                            )}
+                          </>
                         )}
 
                         <div className="bg-stone-50/80 rounded-lg p-3 space-y-2">
