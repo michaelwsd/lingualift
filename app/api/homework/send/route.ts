@@ -69,10 +69,12 @@ function buildPracticeQuestions(
   const questions: PracticeQuestion[] = [];
   const allWordTexts = collectedWords.map(w => w.word);
 
-  // Build word→definition lookup from collected words
+  // Build word→definition and word→phonetic lookups from collected words
   const wordDefLookup: Record<string, string> = {};
+  const wordPhoneticLookup: Record<string, string> = {};
   for (const cw of collectedWords) {
     wordDefLookup[cw.word.toLowerCase()] = cw.meaning;
+    if (cw.phonetic) wordPhoneticLookup[cw.word.toLowerCase()] = cw.phonetic;
   }
 
   function getOptionDefs(options: string[], extraDefs?: Record<string, string>): Record<string, string> {
@@ -92,6 +94,7 @@ function buildPracticeQuestions(
       wordId: q.wordId,
       type: 'mc_definition',
       prompt: q.word,
+      phonetic: q.phonetic || wordPhoneticLookup[q.word.toLowerCase()],
       options: shuffle([q.correctDefinition, ...shuffle(others).slice(0, 3)]),
       correctAnswer: q.correctDefinition,
     });
@@ -106,6 +109,7 @@ function buildPracticeQuestions(
       wordId: q.wordId,
       type: 'mc_synonym',
       prompt: q.word,
+      phonetic: q.phonetic || wordPhoneticLookup[q.word.toLowerCase()],
       options: opts,
       correctAnswer: q.correctSynonym,
       optionDefinitions: getOptionDefs(opts, q.optionDefinitions),

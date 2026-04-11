@@ -31,6 +31,7 @@ export interface Passage {
 export interface CollectedWord {
   id: string;
   word: string;
+  phonetic?: string;
   meaning: string;
   exampleSentence: string;
   memoryTip: string;
@@ -64,6 +65,7 @@ export interface SavedSession {
 export interface MCDefinitionQuestion {
   wordId: string;
   word: string;
+  phonetic?: string;
   correctDefinition: string;
   options: string[];
 }
@@ -71,6 +73,7 @@ export interface MCDefinitionQuestion {
 export interface MCSynonymQuestion {
   wordId: string;
   word: string;
+  phonetic?: string;
   correctSynonym: string;
   options: string[];
   optionDefinitions?: Record<string, string>;
@@ -95,6 +98,7 @@ export interface PracticeQuestion {
   wordId: string;
   type: PracticeQuestionType;
   prompt: string;
+  phonetic?: string;
   options: string[];
   correctAnswer: string;
   optionDefinitions?: Record<string, string>;

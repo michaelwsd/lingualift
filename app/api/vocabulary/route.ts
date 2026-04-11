@@ -27,6 +27,7 @@ export async function GET() {
       words: (hw.collected_words || []).map((w: any) => ({
         id: w.id,
         word: w.word,
+        phonetic: w.phonetic || null,
         meaning: w.meaning,
         exampleSentence: w.exampleSentence,
         memoryTip: w.memoryTip,

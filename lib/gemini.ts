@@ -45,11 +45,12 @@ const PASSAGE_SCHEMA: Schema = {
 const WORD_EXPLANATION_SCHEMA: Schema = {
   type: Type.OBJECT,
   properties: {
+    phonetic: { type: Type.STRING, description: "IPA phonetic transcription of the word enclosed in slashes, e.g. /rɪˈzɪl.i.ənt/. Use Australian English pronunciation." },
     meaning: { type: Type.STRING, description: "A clear, simple definition of the word suitable for EAL students. MUST NOT contain the word itself or any form of the word." },
     exampleSentence: { type: Type.STRING, description: "A simple example sentence using the word in a different context" },
     memoryTip: { type: Type.STRING, description: "A short memory tip or mnemonic to help remember the word" }
   },
-  required: ["meaning", "exampleSentence", "memoryTip"]
+  required: ["phonetic", "meaning", "exampleSentence", "memoryTip"]
 };
 
 const SYNONYM_GROUPS_SCHEMA: Schema = {
@@ -208,7 +209,7 @@ export const generatePassageContent = async (config: GenerationConfig): Promise<
   };
 };
 
-export const explainWord = async (word: string, context: string): Promise<{ meaning: string; exampleSentence: string; memoryTip: string }> => {
+export const explainWord = async (word: string, context: string): Promise<{ phonetic: string; meaning: string; exampleSentence: string; memoryTip: string }> => {
   const response = await ai.models.generateContent({
     model: 'gemini-2.5-flash',
     contents: `Explain the word or phrase "${word}" for a VCE EAL (English as Additional Language) student.
@@ -216,13 +217,14 @@ export const explainWord = async (word: string, context: string): Promise<{ mean
 The word appears in this context: "${context}"
 
 Provide:
-1. A clear, simple meaning of the word as used in this context.
+1. The IPA phonetic transcription of the word enclosed in slashes (e.g. /rɪˈzɪl.i.ənt/). Use Australian English pronunciation.
+2. A clear, simple meaning of the word as used in this context.
    CRITICAL: The meaning MUST NOT contain the word "${word}" itself or any form/variation of it.
    Write the definition as if for a dictionary - describe the concept without using the target word.
    Bad example for "resilient": "Being resilient means able to recover quickly" (contains the word!)
    Good example for "resilient": "Able to recover quickly from difficulties; tough and adaptable"
-2. A new, simple example sentence using the word (not from the original context).
-3. A short, memorable tip or mnemonic to help an EAL student remember this word.
+3. A new, simple example sentence using the word (not from the original context).
+4. A short, memorable tip or mnemonic to help an EAL student remember this word.
 
 Keep everything simple, clear, and accessible for students learning English.`,
     config: {
@@ -237,6 +239,7 @@ Keep everything simple, clear, and accessible for students learning English.`,
 
   const data = JSON.parse(text);
   return {
+    phonetic: data.phonetic,
     meaning: data.meaning,
     exampleSentence: data.exampleSentence,
     memoryTip: data.memoryTip,
@@ -442,6 +445,7 @@ IMPORTANT:
   return data.questions.map((q: any, i: number) => ({
     wordId: words[i].id,
     word: words[i].word,
+    phonetic: words[i].phonetic || undefined,
     correctDefinition: words[i].meaning,
     options: shuffle([words[i].meaning, ...q.distractors.slice(0, 4)]),
   }));
@@ -489,6 +493,7 @@ IMPORTANT:
     return {
       wordId: words[i].id,
       word: words[i].word,
+      phonetic: words[i].phonetic || undefined,
       correctSynonym: q.correctSynonym,
       options: shuffle([q.correctSynonym, ...q.distractors.slice(0, 4)]),
       optionDefinitions: optionDefs,

@@ -91,6 +91,9 @@ export const MCDefinitions: React.FC<MCDefinitionsProps> = ({
           <h2 className="text-3xl font-serif font-bold text-[#1e1b4b] capitalize">
             {question.word}
           </h2>
+          {question.phonetic && (
+            <p className="text-sm text-stone-400 mt-1">{question.phonetic}</p>
+          )}
         </div>
 
         {/* Options */}

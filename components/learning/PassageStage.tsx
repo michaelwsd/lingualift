@@ -24,6 +24,7 @@ interface SelectionPopover {
 
 interface ExplanationPopover {
   text: string;
+  phonetic: string | null;
   explanation: string | null;
   isLoading: boolean;
   x: number;
@@ -95,11 +96,11 @@ export const PassageStage: React.FC<PassageStageProps> = ({
     if (!selection) return;
     const { text, context, x, y } = selection;
     setSelection(null);
-    setExplanation({ text, explanation: null, isLoading: true, x, y });
+    setExplanation({ text, phonetic: null, explanation: null, isLoading: true, x, y });
 
     try {
       const result = await explainWord(text, context);
-      setExplanation(prev => prev ? { ...prev, explanation: result.meaning, isLoading: false } : null);
+      setExplanation(prev => prev ? { ...prev, phonetic: result.phonetic, explanation: result.meaning, isLoading: false } : null);
     } catch {
       setExplanation(prev => prev ? { ...prev, explanation: 'Could not explain this word.', isLoading: false } : null);
     }
@@ -116,6 +117,7 @@ export const PassageStage: React.FC<PassageStageProps> = ({
       const newWord: CollectedWord = {
         id: crypto.randomUUID(),
         word: text,
+        phonetic: result.phonetic,
         meaning: result.meaning,
         exampleSentence: result.exampleSentence,
         memoryTip: result.memoryTip,
@@ -150,6 +152,7 @@ export const PassageStage: React.FC<PassageStageProps> = ({
         onAddWord({
           id: crypto.randomUUID(),
           word: w.word,
+          phonetic: w.phonetic,
           meaning: w.meaning,
           exampleSentence: w.exampleSentence,
           memoryTip: w.memoryTip,
@@ -272,7 +275,12 @@ export const PassageStage: React.FC<PassageStageProps> = ({
           <div className="animate-scale-in">
             <div className="bg-slate-900 text-white p-4 rounded-xl shadow-2xl max-w-[min(18rem,calc(100vw-2rem))] relative">
               <div className="flex justify-between items-start gap-2 mb-2">
-                <span className="text-amber-300 font-bold text-sm">&ldquo;{explanation.text}&rdquo;</span>
+                <div>
+                  <span className="text-amber-300 font-bold text-sm">&ldquo;{explanation.text}&rdquo;</span>
+                  {explanation.phonetic && (
+                    <span className="text-slate-400 text-xs ml-1.5">{explanation.phonetic}</span>
+                  )}
+                </div>
                 <button onClick={() => setExplanation(null)} className="text-slate-400 hover:text-white">
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -339,6 +347,9 @@ export const PassageStage: React.FC<PassageStageProps> = ({
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="flex items-center gap-2">
                       <h3 className="text-base font-bold text-slate-900 capitalize font-serif">{word.word}</h3>
+                      {word.phonetic && (
+                        <span className="text-[11px] text-stone-400">{word.phonetic}</span>
+                      )}
                       <button
                         onClick={() => handleSpeak(word.word)}
                         className="text-stone-400 hover:text-indigo-600 transition-colors p-0.5"

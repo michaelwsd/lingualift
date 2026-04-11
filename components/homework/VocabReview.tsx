@@ -36,6 +36,9 @@ export const VocabReview: React.FC<VocabReviewProps> = ({ words, onComplete }) =
                 <div className="flex items-start justify-between gap-2 mb-2.5">
                   <div className="flex items-center gap-2.5">
                     <h3 className="text-lg font-bold text-slate-900 capitalize font-serif">{word.word}</h3>
+                    {word.phonetic && (
+                      <span className="text-xs text-stone-400 font-normal">{word.phonetic}</span>
+                    )}
                     <button
                       onClick={() => speak(word.word)}
                       className="text-stone-400 hover:text-indigo-600 transition-colors p-0.5"

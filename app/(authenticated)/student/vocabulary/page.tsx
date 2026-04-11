@@ -84,9 +84,14 @@ function WordModal({
         <div className="bg-linear-to-br from-[#1e1b4b] to-indigo-800 px-6 py-5">
           <div className="flex items-start justify-between">
             <div>
-              <h2 className="text-xl font-serif font-bold text-white capitalize">
-                {word.word}
-              </h2>
+              <div className="flex items-baseline gap-2">
+                <h2 className="text-xl font-serif font-bold text-white capitalize">
+                  {word.word}
+                </h2>
+                {word.phonetic && (
+                  <span className="text-sm text-indigo-200 font-normal">{word.phonetic}</span>
+                )}
+              </div>
               <p className="text-indigo-200 text-xs mt-1 font-medium">
                 from: {word.lessonTitle}
               </p>
@@ -185,9 +190,14 @@ function WordCard({
         className="w-full text-left bg-white rounded-xl border border-stone-200/80 shadow-sm hover:shadow-md hover:border-stone-300 transition-all duration-200 p-5 group cursor-pointer"
       >
         <div className="flex items-start justify-between gap-2">
-          <h3 className="text-base font-bold text-slate-900 capitalize font-serif">
-            {word.word}
-          </h3>
+          <div>
+            <h3 className="text-base font-bold text-slate-900 capitalize font-serif">
+              {word.word}
+            </h3>
+            {word.phonetic && (
+              <p className="text-[11px] text-stone-400 mt-0.5">{word.phonetic}</p>
+            )}
+          </div>
           <button
             onClick={handleRemove}
             className="text-stone-300 hover:text-red-500 transition-colors p-1 rounded-md hover:bg-red-50 sm:opacity-0 sm:group-hover:opacity-100 flex-none"

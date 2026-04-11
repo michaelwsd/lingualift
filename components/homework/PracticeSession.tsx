@@ -453,6 +453,9 @@ export const PracticeSession: React.FC<PracticeSessionProps> = ({
               <h2 className="text-2xl sm:text-3xl font-serif font-bold text-[#1e1b4b] capitalize">
                 {currentMCQuestion.prompt}
               </h2>
+              {currentMCQuestion.phonetic && (
+                <p className="text-sm text-stone-400 mt-1">{currentMCQuestion.phonetic}</p>
+              )}
             </>
           )}
         </div>

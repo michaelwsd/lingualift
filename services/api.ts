@@ -21,7 +21,7 @@ export const generatePassageContent = async (config: GenerationConfig): Promise<
   return res.json();
 };
 
-export const explainWord = async (word: string, context: string): Promise<{ meaning: string; exampleSentence: string; memoryTip: string }> => {
+export const explainWord = async (word: string, context: string): Promise<{ phonetic: string; meaning: string; exampleSentence: string; memoryTip: string }> => {
   const res = await fetch('/api/explain-word', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

@@ -14,11 +14,12 @@ const SCHEMA = {
         type: Type.OBJECT,
         properties: {
           word: { type: Type.STRING, description: 'The challenging word or short phrase exactly as it appears in the passage' },
+          phonetic: { type: Type.STRING, description: 'IPA phonetic transcription enclosed in slashes, e.g. /rɪˈzɪl.i.ənt/. Use Australian English pronunciation.' },
           meaning: { type: Type.STRING, description: 'A clear, concise definition suitable for a language learner' },
           exampleSentence: { type: Type.STRING, description: 'An example sentence using the word (different from the passage)' },
           memoryTip: { type: Type.STRING, description: 'A short memory tip or mnemonic to help remember the word' },
         },
-        required: ['word', 'meaning', 'exampleSentence', 'memoryTip'],
+        required: ['word', 'phonetic', 'meaning', 'exampleSentence', 'memoryTip'],
       },
     },
   },
