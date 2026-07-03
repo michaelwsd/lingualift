@@ -536,6 +536,115 @@ Requirements:
   return data.groups;
 };
 
+const USAGE_EVALUATION_SCHEMA: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    correct: {
+      type: Type.BOOLEAN,
+      description: "True if the sentence uses the target word correctly (right meaning + grammatically sensible). Minor spelling/punctuation slips elsewhere should NOT fail it.",
+    },
+    feedback: {
+      type: Type.STRING,
+      description: "One short, encouraging sentence for the student. If correct, praise briefly and note what was good. If incorrect, gently explain what went wrong with the word's usage.",
+    },
+    correctedSentence: {
+      type: Type.STRING,
+      description: "If the sentence was incorrect, a corrected version that uses the word properly. If it was already correct, return an empty string.",
+    },
+  },
+  required: ["correct", "feedback", "correctedSentence"],
+};
+
+export const evaluateWordUsage = async (
+  word: string,
+  meaning: string,
+  sentence: string,
+): Promise<{ correct: boolean; feedback: string; correctedSentence: string }> => {
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: `A VCE EAL (English as Additional Language) student was asked to write their own sentence using the word "${word}".
+
+The word means: "${meaning}"
+
+The student wrote: "${sentence}"
+
+Decide whether the student has used "${word}" CORRECTLY — that is, with the right meaning and in a grammatically sensible way. The sentence must show they understand what the word means, not just place it randomly.
+
+Guidelines:
+- Be encouraging but honest. This is a live in-class check of whether they truly understand the word.
+- Focus on whether the TARGET WORD is used correctly. Do not fail the sentence for small unrelated spelling or punctuation mistakes.
+- If the word is missing entirely, or used with the wrong meaning, mark it incorrect.
+- Keep feedback to ONE short sentence in simple language.`,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: USAGE_EVALUATION_SCHEMA,
+      systemInstruction: "You are a warm, encouraging VCE EAL teacher checking whether a student can use a new vocabulary word correctly in their own sentence. Be fair and clear.",
+    },
+  });
+
+  const text = response.text;
+  if (!text) throw new Error("No usage evaluation generated");
+
+  const data = JSON.parse(text);
+  return {
+    correct: !!data.correct,
+    feedback: data.feedback || '',
+    correctedSentence: data.correctedSentence || '',
+  };
+};
+
+const MEANING_EVALUATION_SCHEMA: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    correct: {
+      type: Type.BOOLEAN,
+      description: "True if the student's explanation captures the ESSENTIAL meaning of the word, even if worded differently or partially. False only if it is wrong, missing the core idea, or too vague to show understanding.",
+    },
+    feedback: {
+      type: Type.STRING,
+      description: "One short, encouraging sentence. If correct, affirm briefly. If incorrect, gently point them toward what the word actually means without simply giving the full definition.",
+    },
+  },
+  required: ["correct", "feedback"],
+};
+
+export const evaluateWordMeaning = async (
+  word: string,
+  meaning: string,
+  studentDescription: string,
+): Promise<{ correct: boolean; feedback: string }> => {
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: `A VCE EAL (English as Additional Language) student was asked to explain, in their OWN words, what the word "${word}" means.
+
+The correct meaning is: "${meaning}"
+
+The student wrote: "${studentDescription}"
+
+Decide whether the student's explanation shows they understand the word.
+
+Guidelines:
+- Be lenient and encouraging. Their own words, synonyms, examples, or a partial-but-essentially-correct description should count as CORRECT.
+- Mark INCORRECT only if the explanation is wrong, describes a different concept, is empty/off-topic, or is so vague it shows no real understanding.
+- Do NOT require dictionary wording or the exact definition.
+- Keep feedback to ONE short sentence in simple language.`,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: MEANING_EVALUATION_SCHEMA,
+      systemInstruction: "You are a warm, encouraging VCE EAL teacher checking whether a student can explain a vocabulary word's meaning in their own words. Reward genuine understanding, not exact wording.",
+    },
+  });
+
+  const text = response.text;
+  if (!text) throw new Error("No meaning evaluation generated");
+
+  const data = JSON.parse(text);
+  return {
+    correct: !!data.correct,
+    feedback: data.feedback || '',
+  };
+};
+
 export const generateHomeworkFillInBlank = async (words: string[]): Promise<{ passage: string; answers: string[] }> => {
   if (words.length === 0) {
     throw new Error("At least one word is required");

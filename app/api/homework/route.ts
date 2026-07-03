@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabaseAdmin, isMissingColumnError } from '@/lib/supabase';
+
+const BASE_COLS = 'id, student_name, assigned_at, status, homework_type, passage, collected_words';
 
 export async function GET() {
   try {
@@ -9,11 +11,19 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data, error } = await supabaseAdmin
+    let { data, error }: { data: Record<string, any>[] | null; error: { code?: string; message?: string; details?: string } | null } = await supabaseAdmin
       .from('homework_assignments')
-      .select('id, student_name, assigned_at, status, homework_type, passage, collected_words')
+      .select(`${BASE_COLS}, due_date`)
       .eq('student_id', userId)
       .order('assigned_at', { ascending: false });
+
+    if (error && isMissingColumnError(error)) {
+      ({ data, error } = await supabaseAdmin
+        .from('homework_assignments')
+        .select(BASE_COLS)
+        .eq('student_id', userId)
+        .order('assigned_at', { ascending: false }));
+    }
 
     if (error) {
       console.error('Supabase query error:', error);
@@ -32,6 +42,8 @@ export async function GET() {
       passageType: a.passage?.type || '',
       wordCount: Array.isArray(a.collected_words) ? a.collected_words.length : 0,
       questionCount: Array.isArray(a.passage?.questions) ? a.passage.questions.length : 0,
+      dueDate: (a as { due_date?: string | null }).due_date ?? null,
+      plan: a.passage?.plan ?? null,
     }));
 
     return NextResponse.json({ assignments });

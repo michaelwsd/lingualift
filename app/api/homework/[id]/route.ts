@@ -36,7 +36,20 @@ export async function GET(
       .eq('student_id', assignment.student_id)
       .single();
 
-    return NextResponse.json({ assignment, progress });
+    // For practice-plan days, report whether the previous day is completed.
+    let planPrevCompleted = true;
+    const plan = assignment.passage?.plan as { planId: string; day: number } | undefined;
+    if (plan && plan.day > 1) {
+      const { data: siblings } = await supabaseAdmin
+        .from('homework_assignments')
+        .select('passage, status')
+        .eq('student_id', assignment.student_id)
+        .filter('passage->plan->>planId', 'eq', plan.planId);
+      const prev = (siblings || []).find(s => s.passage?.plan?.day === plan.day - 1);
+      planPrevCompleted = prev ? prev.status === 'completed' : true;
+    }
+
+    return NextResponse.json({ assignment, progress, planPrevCompleted });
   } catch (error) {
     console.error('Failed to fetch homework:', error);
     return NextResponse.json({ error: 'Failed to fetch homework' }, { status: 500 });

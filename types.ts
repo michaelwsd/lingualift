@@ -18,6 +18,13 @@ export interface ComprehensionQuestion {
   relevantText: string[];
 }
 
+export interface PlanMeta {
+  planId: string;
+  day: number;
+  totalDays: number;
+  unlockDate: string | null;
+}
+
 export interface Passage {
   id: string;
   title: string;
@@ -26,6 +33,8 @@ export interface Passage {
   topic: string;
   type: LiteratureType;
   createdAt: number;
+  /** Present on practice-plan homework passages. */
+  plan?: PlanMeta;
 }
 
 export interface CollectedWord {
@@ -84,7 +93,7 @@ export interface CrossMatchingData {
   definitions: { id: string; text: string }[];
 }
 
-export type HomeworkPhase = 'vocab_review' | 'practice' | 'completed';
+export type HomeworkPhase = 'vocab_review' | 'learning' | 'practice' | 'completed';
 
 export type PracticeQuestionType =
   | 'mc_definition'
@@ -137,6 +146,26 @@ export interface PracticeSessionState {
   answeredIncorrectly: string[];
 }
 
+// --- Vocabulary Mastery (student 4-skill gauntlet) ---
+
+export type VocabSkill = 'meaning' | 'define' | 'spell' | 'use_it';
+
+export interface VocabMasteryState {
+  /** Task ids in play order, each `${wordId}::${skill}`. */
+  order: string[];
+  clearedTaskIds: string[];
+  currentIndex: number;
+  points: number;
+  streak: number;
+  bestStreak: number;
+  /** taskId → attempts it took to clear. */
+  taskAttempts: Record<string, number>;
+  /** skill → first-try / total tallies (for the results breakdown). */
+  perSkill: Record<string, { firstTry: number; total: number }>;
+  /** words where all four skills were cleared on the first try. */
+  masteredWordIds: string[];
+}
+
 export interface GeneratedExercises {
   practiceQuestions: PracticeQuestion[];
   passageFillExercises: PassageFillExercise[];
@@ -152,6 +181,8 @@ export interface HomeworkAssignment {
   student_id: string;
   student_name: string;
   assigned_at: string;
+  due_date?: string | null;
+  unlock_date?: string | null;
   status: 'pending' | 'in_progress' | 'completed';
   homework_type: HomeworkType;
   passage: Passage;

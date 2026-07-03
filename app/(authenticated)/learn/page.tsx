@@ -8,8 +8,39 @@ import { PassageStage } from '@/components/learning/PassageStage';
 import { ComprehensionStage } from '@/components/learning/ComprehensionStage';
 import { PracticeStage } from '@/components/learning/PracticeStage';
 import { SavedSession, Passage, CollectedWord, FillInBlankExercise, SynonymExercise } from '@/types';
-import { ChevronLeft, ChevronRight, RotateCcw, BookOpen, Brain, Puzzle, Save, Check, LogOut, GraduationCap, Send, ChevronDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RotateCcw, BookOpen, Brain, Puzzle, Save, Check, LogOut, GraduationCap, Send, ChevronDown, CalendarClock } from 'lucide-react';
 import { createPortal } from 'react-dom';
+import { dateInputToDueIso } from '@/lib/dueDate';
+
+// Shared due-date field used by the send modals.
+function DueDateField({ value, onChange, accent }: { value: string; onChange: (v: string) => void; accent: 'indigo' | 'teal' }) {
+  const ring = accent === 'teal' ? 'focus:border-teal-500 focus:ring-teal-500/20' : 'focus:border-indigo-500 focus:ring-indigo-500/20';
+  return (
+    <div>
+      <label className="flex items-center gap-1.5 text-sm font-medium text-slate-700 mb-1">
+        <CalendarClock className="w-3.5 h-3.5 text-stone-400" />
+        Due date <span className="text-xs font-normal text-stone-400">(optional)</span>
+      </label>
+      <div className="flex items-center gap-2">
+        <input
+          type="date"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          className={`flex-1 px-3 py-2.5 border border-stone-300 rounded-lg bg-stone-50/50 text-sm text-slate-700 outline-none transition-all ${ring} focus:ring-2`}
+        />
+        {value && (
+          <button
+            type="button"
+            onClick={() => onChange('')}
+            className="px-2.5 py-2 text-xs font-medium text-stone-400 hover:text-stone-600 transition-colors"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 const STAGES = [
   { label: 'Reading', icon: <BookOpen className="w-4 h-4" /> },
@@ -304,6 +335,7 @@ function HomeworkModal({
   const [students, setStudents] = useState<{ id: string; name: string }[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedName, setSelectedName] = useState<string | null>(null);
+  const [dueDate, setDueDate] = useState('');
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -343,6 +375,7 @@ function HomeworkModal({
           studentName: selectedName,
           passage,
           collectedWords,
+          dueDate: dateInputToDueIso(dueDate),
         }),
       });
 
@@ -459,6 +492,8 @@ function HomeworkModal({
               </div>
             </div>
 
+            <DueDateField value={dueDate} onChange={setDueDate} accent="indigo" />
+
             <button
               onClick={handleSend}
               disabled={!selectedId}
@@ -483,6 +518,7 @@ function ComprehensionHomeworkModal({
   const [students, setStudents] = useState<{ id: string; name: string }[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedName, setSelectedName] = useState<string | null>(null);
+  const [dueDate, setDueDate] = useState('');
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -521,6 +557,7 @@ function ComprehensionHomeworkModal({
           studentId: selectedId,
           studentName: selectedName,
           passage,
+          dueDate: dateInputToDueIso(dueDate),
         }),
       });
 
@@ -639,6 +676,8 @@ function ComprehensionHomeworkModal({
                 </div>
               </div>
             </div>
+
+            <DueDateField value={dueDate} onChange={setDueDate} accent="teal" />
 
             <button
               onClick={handleSend}

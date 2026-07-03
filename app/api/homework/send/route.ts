@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabaseAdmin, isMissingDueDateColumn } from '@/lib/supabase';
 import { generateMCDefinitions, generateMCSynonyms, generateHomeworkSynonyms, generateHomeworkFillInBlank } from '@/lib/gemini';
 import {
   CollectedWord,
@@ -223,11 +223,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { studentId, studentName, passage, collectedWords } = await request.json() as {
+    const { studentId, studentName, passage, collectedWords, dueDate } = await request.json() as {
       studentId: string;
       studentName: string;
       passage: any;
       collectedWords: CollectedWord[];
+      dueDate?: string | null;
     };
 
     if (!studentId || !passage || !collectedWords?.length) {
@@ -263,25 +264,36 @@ export async function POST(request: Request) {
       definitions: shuffle(collectedWords.map(w => ({ id: w.id, text: w.meaning }))),
     };
 
-    const { data, error } = await supabaseAdmin
+    const basePayload = {
+      teacher_id: userId,
+      student_id: studentId,
+      student_name: studentName,
+      homework_type: 'vocabulary',
+      passage,
+      collected_words: collectedWords,
+      mc_definitions: mcDefinitions,
+      mc_synonyms: mcSynonyms,
+      cross_matching_data: crossMatchingData,
+      synonym_groups: { groups: synonymGroups },
+      generated_exercises: generatedExercises,
+    };
+
+    // Insert with due_date; if the column doesn't exist yet, retry without it.
+    let { data, error } = await supabaseAdmin
       .from('homework_assignments')
-      .insert({
-        teacher_id: userId,
-        student_id: studentId,
-        student_name: studentName,
-        homework_type: 'vocabulary',
-        passage,
-        collected_words: collectedWords,
-        mc_definitions: mcDefinitions,
-        mc_synonyms: mcSynonyms,
-        cross_matching_data: crossMatchingData,
-        synonym_groups: { groups: synonymGroups },
-        generated_exercises: generatedExercises,
-      })
+      .insert(dueDate ? { ...basePayload, due_date: dueDate } : basePayload)
       .select('id')
       .single();
 
-    if (error) {
+    if (error && dueDate && isMissingDueDateColumn(error)) {
+      ({ data, error } = await supabaseAdmin
+        .from('homework_assignments')
+        .insert(basePayload)
+        .select('id')
+        .single());
+    }
+
+    if (error || !data) {
       console.error('Supabase insert error:', error);
       return NextResponse.json({ error: 'Failed to save homework' }, { status: 500 });
     }

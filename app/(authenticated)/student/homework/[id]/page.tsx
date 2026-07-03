@@ -3,15 +3,17 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { fetchHomework, saveHomeworkProgress } from '@/services/api';
-import { HomeworkAssignment, HomeworkPhase, PracticeSessionState } from '@/types';
+import { HomeworkAssignment, HomeworkPhase, VocabMasteryState, PracticeSessionState } from '@/types';
 import { HomeworkProgressBar } from '@/components/homework/HomeworkProgressBar';
 import { VocabReview } from '@/components/homework/VocabReview';
+import { VocabMasterySession } from '@/components/homework/VocabMasterySession';
 import { PracticeSession } from '@/components/homework/PracticeSession';
-import { CompletionScreen } from '@/components/homework/CompletionScreen';
+import { VocabResults } from '@/components/homework/VocabResults';
 import { ComprehensionSession } from '@/components/homework/ComprehensionSession';
-import { Loader2, LogOut } from 'lucide-react';
+import { ComprehensionResults } from '@/components/homework/ComprehensionResults';
+import { Loader2, LogOut, Lock, ArrowLeft } from 'lucide-react';
 
-const PHASE_ORDER: HomeworkPhase[] = ['vocab_review', 'practice', 'completed'];
+const PHASE_ORDER: HomeworkPhase[] = ['vocab_review', 'learning', 'practice', 'completed'];
 
 export default function HomeworkSessionPage() {
   const params = useParams();
@@ -27,6 +29,7 @@ export default function HomeworkSessionPage() {
   // Practice stats for the progress bar
   const [totalQuestions, setTotalQuestions] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
+  const [planPrevCompleted, setPlanPrevCompleted] = useState(true);
 
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -40,37 +43,59 @@ export default function HomeworkSessionPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const { assignment: hw, progress } = await fetchHomework(id);
+        const { assignment: hw, progress, planPrevCompleted: prevDone } = await fetchHomework(id);
         setAssignment(hw);
+        setPlanPrevCompleted(prevDone ?? true);
 
         if (progress) {
-          // Migration: old phases map to 'practice'
           const phase = progress.current_phase as string;
+          let resolvedPhase: HomeworkPhase;
           if (phase === 'completed') {
-            setCurrentPhase('completed');
-          } else if (phase === 'vocab_review') {
-            // Comprehension homework skips vocab_review
-            setCurrentPhase(hw.homework_type === 'comprehension' ? 'practice' : 'vocab_review');
+            resolvedPhase = 'completed';
+          } else if (phase === 'learning') {
+            resolvedPhase = 'learning';
           } else if (phase === 'practice') {
-            setCurrentPhase('practice');
+            resolvedPhase = 'practice';
+          } else if (phase === 'vocab_review') {
+            // Comprehension homework skips the vocab stages
+            resolvedPhase = hw.homework_type === 'comprehension' ? 'practice' : 'vocab_review';
           } else {
-            // Old phase (mc_definitions, mc_synonyms, etc.) → start practice fresh
-            setCurrentPhase('practice');
+            // Legacy phase names → start practice fresh
+            resolvedPhase = 'practice';
           }
+          // Learning-only homework (practice plan) has no Practice stage.
+          const hwEx = hw.generated_exercises;
+          const hwHasPractice = !!hwEx && (
+            (hwEx.practiceQuestions?.length || 0) > 0 ||
+            (hwEx.passageFillExercises?.length || 0) > 0 ||
+            (hwEx.wordMatchingExercises?.length || 0) > 0
+          );
+          if (resolvedPhase === 'practice' && !hwHasPractice) {
+            resolvedPhase = 'completed';
+          }
+          setCurrentPhase(resolvedPhase);
           setExercisesCompleted(progress.exercises_completed as string[]);
           setAnswersGiven(progress.answers_given as Record<string, any>);
 
-          // Restore practice stats from saved state
-          const practiceState = progress.answers_given?.practice as PracticeSessionState | undefined;
-          if (practiceState) {
-            const total = (practiceState.allQuestions?.length || 0)
-              + (practiceState.passageFills?.length || 0)
-              + (practiceState.matchingExercises?.length || 0);
-            setTotalQuestions(total);
-            setCorrectCount(practiceState.answeredCorrectly?.length || 0);
+          // Restore progress-bar stats for the active stage
+          if (resolvedPhase === 'learning') {
+            const vocabState = progress.answers_given?.vocabMastery as VocabMasteryState | undefined;
+            if (vocabState) {
+              setTotalQuestions(vocabState.order?.length || 0);
+              setCorrectCount(vocabState.clearedTaskIds?.length || 0);
+            }
+          } else if (resolvedPhase === 'practice') {
+            const practiceState = progress.answers_given?.practice as PracticeSessionState | undefined;
+            if (practiceState) {
+              const total = (practiceState.allQuestions?.length || 0)
+                + (practiceState.passageFills?.length || 0)
+                + (practiceState.matchingExercises?.length || 0);
+              setTotalQuestions(total);
+              setCorrectCount(practiceState.answeredCorrectly?.length || 0);
+            }
           }
         } else if (hw.homework_type === 'comprehension') {
-          // Comprehension homework starts directly (no vocab_review phase)
+          // Comprehension homework starts directly (no vocab stages)
           setCurrentPhase('practice');
         }
       } catch {
@@ -128,6 +153,40 @@ export default function HomeworkSessionPage() {
     debouncedSave(nextPhase, newCompleted, answersGiven);
   }, [exercisesCompleted, answersGiven, debouncedSave]);
 
+  const handleLearningStateChange = useCallback((state: VocabMasteryState) => {
+    setTotalQuestions(state.order.length);
+    setCorrectCount(state.clearedTaskIds.length);
+
+    setAnswersGiven(prev => {
+      const updated = { ...prev, vocabMastery: state };
+      // Update ref immediately so beforeunload always has latest state
+      latestStateRef.current = { ...latestStateRef.current, answersGiven: updated };
+      debouncedSave('learning', exercisesCompleted, updated);
+      return updated;
+    });
+  }, [exercisesCompleted, debouncedSave]);
+
+  const handleLearningComplete = useCallback(() => {
+    const ex = assignment?.generated_exercises;
+    const hasPractice = !!ex && (
+      (ex.practiceQuestions?.length || 0) > 0 ||
+      (ex.passageFillExercises?.length || 0) > 0 ||
+      (ex.wordMatchingExercises?.length || 0) > 0
+    );
+    if (hasPractice) {
+      // Learning → Practice. Reset the progress bar for the new stage.
+      setTotalQuestions(0);
+      setCorrectCount(0);
+      advancePhase('learning');
+    } else {
+      // Practice-plan / learning-only homework — finish after the gauntlet.
+      const newCompleted = [...exercisesCompleted, 'learning', 'practice'];
+      setExercisesCompleted(newCompleted);
+      setCurrentPhase('completed');
+      debouncedSave('completed', newCompleted, answersGiven);
+    }
+  }, [assignment, advancePhase, exercisesCompleted, answersGiven, debouncedSave]);
+
   const handlePracticeStateChange = useCallback((state: PracticeSessionState) => {
     const total = state.allQuestions.length
       + (state.passageFills?.length || 0)
@@ -137,7 +196,6 @@ export default function HomeworkSessionPage() {
 
     setAnswersGiven(prev => {
       const updated = { ...prev, practice: state };
-      // Update ref immediately so beforeunload always has latest state
       latestStateRef.current = { ...latestStateRef.current, answersGiven: updated };
       debouncedSave('practice', exercisesCompleted, updated);
       return updated;
@@ -182,6 +240,36 @@ export default function HomeworkSessionPage() {
 
   if (!assignment) return null;
 
+  // Practice-plan days unlock only when their date has arrived AND the previous
+  // day is completed.
+  const plan = assignment.passage?.plan;
+  if (plan) {
+    const dateLocked = !!plan.unlockDate && new Date(plan.unlockDate).getTime() > Date.now();
+    const prevLocked = plan.day > 1 && !planPrevCompleted;
+    if (dateLocked || prevLocked) {
+      const reason = dateLocked
+        ? `Come back on ${new Date(plan.unlockDate!).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'short' })} to unlock it.`
+        : `Finish Day ${plan.day - 1} first to unlock this one.`;
+      return (
+        <div className="h-full flex items-center justify-center px-4">
+          <div className="text-center max-w-sm animate-scale-in">
+            <div className="w-16 h-16 bg-stone-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Lock className="w-8 h-8 text-stone-400" />
+            </div>
+            <h2 className="text-xl font-serif font-bold text-slate-900 mb-1">Day {plan.day} is locked</h2>
+            <p className="text-sm text-stone-500 mb-6">{reason}</p>
+            <button
+              onClick={() => router.push('/student/homework')}
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-[#1e1b4b] hover:bg-indigo-800 rounded-xl transition-all shadow-sm"
+            >
+              <ArrowLeft className="w-4 h-4" /> Back to Homework
+            </button>
+          </div>
+        </div>
+      );
+    }
+  }
+
   const isComprehension = assignment.homework_type === 'comprehension';
 
   const handleComprehensionStateChange = (comprehensionAnswers: Record<string, any>) => {
@@ -204,9 +292,9 @@ export default function HomeworkSessionPage() {
     return (
       <div className="h-full flex flex-col">
         {currentPhase === 'completed' ? (
-          <CompletionScreen
-            totalWords={assignment.passage.questions?.length || 0}
-            label="questions answered"
+          <ComprehensionResults
+            passage={assignment.passage}
+            answers={answersGiven.comprehension}
           />
         ) : (
           <ComprehensionSession
@@ -221,11 +309,20 @@ export default function HomeworkSessionPage() {
     );
   }
 
+  const exercises = assignment.generated_exercises;
+  const hasPractice = !!exercises && (
+    (exercises.practiceQuestions?.length || 0) > 0 ||
+    (exercises.passageFillExercises?.length || 0) > 0 ||
+    (exercises.wordMatchingExercises?.length || 0) > 0
+  );
+
   return (
     <div className="h-full flex flex-col">
       <div className="relative">
         <HomeworkProgressBar
           currentPhase={currentPhase}
+          completedPhases={exercisesCompleted}
+          hasPractice={hasPractice}
           allQuestionsCount={totalQuestions}
           correctlyAnsweredCount={correctCount}
           onPhaseClick={handlePhaseClick}
@@ -252,6 +349,15 @@ export default function HomeworkSessionPage() {
           />
         )}
 
+        {currentPhase === 'learning' && (
+          <VocabMasterySession
+            words={assignment.collected_words}
+            savedState={answersGiven.vocabMastery || null}
+            onStateChange={handleLearningStateChange}
+            onComplete={handleLearningComplete}
+          />
+        )}
+
         {currentPhase === 'practice' && (
           <PracticeSession
             assignment={assignment}
@@ -262,8 +368,9 @@ export default function HomeworkSessionPage() {
         )}
 
         {currentPhase === 'completed' && (
-          <CompletionScreen
-            totalWords={assignment.collected_words.length}
+          <VocabResults
+            state={answersGiven.vocabMastery || null}
+            words={assignment.collected_words}
           />
         )}
       </div>

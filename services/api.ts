@@ -58,6 +58,7 @@ export const sendHomework = async (data: {
   studentName: string;
   passage: Passage;
   collectedWords: CollectedWord[];
+  dueDate?: string | null;
 }): Promise<{ success: boolean; id: string }> => {
   const res = await fetch('/api/homework/send', {
     method: 'POST',
@@ -79,9 +80,26 @@ export interface HomeworkListItem {
   passageType: string;
   wordCount: number;
   questionCount?: number;
+  dueDate?: string | null;
+  plan?: { planId: string; day: number; totalDays: number; unlockDate: string | null } | null;
   progressStatus?: 'not_started' | 'started' | 'in_progress' | 'completed';
   completionPercent?: number;
 }
+
+export const createPracticePlan = async (data: {
+  studentId: string;
+  studentName: string;
+  wordsPerDay: number;
+  days: number;
+}): Promise<{ success: boolean; created: number }> => {
+  const res = await fetch('/api/homework/create-plan', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to create practice plan');
+  return res.json();
+};
 
 export const fetchHomeworkList = async (): Promise<HomeworkListItem[]> => {
   const res = await fetch('/api/homework');
@@ -93,6 +111,7 @@ export const fetchHomeworkList = async (): Promise<HomeworkListItem[]> => {
 export const fetchHomework = async (id: string): Promise<{
   assignment: HomeworkAssignment;
   progress: HomeworkProgress | null;
+  planPrevCompleted?: boolean;
 }> => {
   const res = await fetch(`/api/homework/${id}`);
   if (!res.ok) throw new Error("Failed to fetch homework");
@@ -203,6 +222,34 @@ export const generateHomeworkFillInBlank = async (words: string[]): Promise<Fill
     body: JSON.stringify({ words }),
   });
   if (!res.ok) throw new Error("Failed to generate fill-in-blank exercise");
+  return res.json();
+};
+
+export const evaluateWordUsage = async (
+  word: string,
+  meaning: string,
+  sentence: string,
+): Promise<{ correct: boolean; feedback: string; correctedSentence: string }> => {
+  const res = await fetch('/api/homework/evaluate-usage', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ word, meaning, sentence }),
+  });
+  if (!res.ok) throw new Error("Failed to evaluate word usage");
+  return res.json();
+};
+
+export const evaluateWordMeaning = async (
+  word: string,
+  meaning: string,
+  description: string,
+): Promise<{ correct: boolean; feedback: string }> => {
+  const res = await fetch('/api/homework/evaluate-meaning', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ word, meaning, description }),
+  });
+  if (!res.ok) throw new Error("Failed to evaluate word meaning");
   return res.json();
 };
 

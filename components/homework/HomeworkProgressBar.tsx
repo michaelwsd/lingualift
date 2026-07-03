@@ -2,26 +2,36 @@
 
 import React, { useState, useEffect } from 'react';
 import { HomeworkPhase } from '@/types';
-import { BookOpen, Zap, Trophy, Check } from 'lucide-react';
+import { BookOpen, GraduationCap, Zap, Trophy, Check, Lock } from 'lucide-react';
 
 interface HomeworkProgressBarProps {
   currentPhase: HomeworkPhase;
+  /** Phases the student has already completed — used to unlock later stages. */
+  completedPhases?: string[];
+  /** When false (e.g. a practice-plan homework), the Practice stage is hidden. */
+  hasPractice?: boolean;
   allQuestionsCount: number;
   correctlyAnsweredCount: number;
   onPhaseClick?: (phase: HomeworkPhase) => void;
 }
 
-const PHASES: { key: HomeworkPhase; label: string; icon: React.ReactNode }[] = [
+const ALL_PHASES: { key: HomeworkPhase; label: string; icon: React.ReactNode }[] = [
   { key: 'vocab_review', label: 'Review', icon: <BookOpen className="w-4 h-4" /> },
+  { key: 'learning', label: 'Learning', icon: <GraduationCap className="w-4 h-4" /> },
   { key: 'practice', label: 'Practice', icon: <Zap className="w-4 h-4" /> },
 ];
 
+const PHASE_SEQUENCE: HomeworkPhase[] = ['vocab_review', 'learning', 'practice', 'completed'];
+
 export const HomeworkProgressBar: React.FC<HomeworkProgressBarProps> = ({
   currentPhase,
+  completedPhases = [],
+  hasPractice = true,
   allQuestionsCount,
   correctlyAnsweredCount,
   onPhaseClick,
 }) => {
+  const PHASES = hasPractice ? ALL_PHASES : ALL_PHASES.filter(p => p.key !== 'practice');
   const [animateBar, setAnimateBar] = useState(false);
   const prevCountRef = React.useRef(correctlyAnsweredCount);
 
@@ -35,15 +45,26 @@ export const HomeworkProgressBar: React.FC<HomeworkProgressBarProps> = ({
   }, [correctlyAnsweredCount]);
 
   const isCompleted = currentPhase === 'completed';
+  const currentIdx = PHASE_SEQUENCE.indexOf(currentPhase);
   const progressPercent = allQuestionsCount > 0
     ? Math.min(100, (correctlyAnsweredCount / allQuestionsCount) * 100)
     : 0;
 
+  // Furthest stage the student has unlocked: the current one, or one past any
+  // completed stage. A later stage (e.g. Practice) stays locked until the
+  // preceding stage (Learning) is finished.
+  const reachedIdx = Math.max(
+    currentIdx,
+    ...completedPhases.map(p => PHASE_SEQUENCE.indexOf(p as HomeworkPhase) + 1),
+    0
+  );
+
+  const isLocked = (phaseKey: HomeworkPhase) => PHASE_SEQUENCE.indexOf(phaseKey) > reachedIdx;
+
   const canNavigate = (phaseKey: HomeworkPhase) => {
     if (isCompleted) return false;
     if (phaseKey === currentPhase) return false;
-    // Can always go back to review, or forward to practice (once review is done)
-    return phaseKey === 'vocab_review' || phaseKey === 'practice';
+    return !isLocked(phaseKey);
   };
 
   return (
@@ -53,10 +74,8 @@ export const HomeworkProgressBar: React.FC<HomeworkProgressBarProps> = ({
         <div className="flex items-center justify-center gap-2 sm:gap-3 mb-3">
           {PHASES.map((phase, i) => {
             const isActive = phase.key === currentPhase;
-            const isDone =
-              phase.key === 'vocab_review'
-                ? currentPhase === 'practice' || isCompleted
-                : isCompleted;
+            const isDone = PHASE_SEQUENCE.indexOf(phase.key) < currentIdx;
+            const locked = isLocked(phase.key);
             const clickable = canNavigate(phase.key);
 
             return (
@@ -77,7 +96,7 @@ export const HomeworkProgressBar: React.FC<HomeworkProgressBarProps> = ({
                       : 'bg-stone-100 text-stone-400'
                   } ${clickable ? 'cursor-pointer hover:scale-105' : ''}`}
                 >
-                  {isDone && !isActive ? <Check className="w-3.5 h-3.5" /> : phase.icon}
+                  {isDone && !isActive ? <Check className="w-3.5 h-3.5" /> : locked ? <Lock className="w-3.5 h-3.5" /> : phase.icon}
                   <span className="hidden sm:inline">{phase.label}</span>
                 </button>
               </React.Fragment>
@@ -113,10 +132,10 @@ export const HomeworkProgressBar: React.FC<HomeworkProgressBarProps> = ({
           </div>
 
           {/* Question count - centered */}
-          {currentPhase === 'practice' && allQuestionsCount > 0 && (
+          {(currentPhase === 'practice' || currentPhase === 'learning') && allQuestionsCount > 0 && (
             <div className="flex items-center justify-center mt-2">
               <span className="text-[11px] text-stone-400 font-medium">
-                {correctlyAnsweredCount} of {allQuestionsCount} correct
+                {correctlyAnsweredCount} of {allQuestionsCount} {currentPhase === 'learning' ? 'completed' : 'correct'}
               </span>
             </div>
           )}

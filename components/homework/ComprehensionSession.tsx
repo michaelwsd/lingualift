@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Passage, ComprehensionQuestion } from '@/types';
 import { renderInlineMarkdown, applyInlineMarkdown } from '@/lib/render-markdown';
-import { BookOpen, CheckCircle2, Send, Eye, Lightbulb, Trophy, LogOut, Loader2, XCircle, Star } from 'lucide-react';
+import { BookOpen, CheckCircle2, Send, Eye, Lightbulb, Trophy, LogOut, Loader2, XCircle, Star, ArrowRight, Sparkles } from 'lucide-react';
 
 interface AnswerState {
   answer: string;
@@ -34,8 +34,19 @@ export const ComprehensionSession: React.FC<ComprehensionSessionProps> = ({
   const [highlightedTexts, setHighlightedTexts] = useState<string[]>([]);
   const [activeQuestionForHighlight, setActiveQuestionForHighlight] = useState<string | null>(null);
   const [evaluatingId, setEvaluatingId] = useState<string | null>(null);
+  const [started, setStarted] = useState(() => {
+    const vals = savedAnswers ? Object.values(savedAnswers) : [];
+    return vals.some(a => a.submitted || a.failed || (a.attempts || 0) > 0);
+  });
+  const [toast, setToast] = useState<{ msg: string; id: number } | null>(null);
   const highlightRef = useRef<HTMLSpanElement>(null);
   const isInitialMount = useRef(true);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 2500);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   useEffect(() => {
     if (highlightRef.current) {
@@ -54,6 +65,8 @@ export const ComprehensionSession: React.FC<ComprehensionSessionProps> = ({
 
   const doneCount = Object.values(answers).filter(a => a.submitted || a.failed).length;
   const allDone = doneCount === passage.questions.length;
+  const earnedStars = Object.values(answers).reduce((s, a) => s + ((a.submitted || a.failed) ? (a.score || 0) : 0), 0);
+  const maxStars = passage.questions.length * 5;
 
   const updateAnswer = useCallback((questionId: string, value: string) => {
     setAnswers(prev => {
@@ -95,6 +108,13 @@ export const ComprehensionSession: React.FC<ComprehensionSessionProps> = ({
       const newAttempts = (current.attempts || 0) + 1;
       const passed = score >= 4;
       const failed = !passed && newAttempts >= 3;
+
+      if (passed) {
+        const praises = score >= 5
+          ? ['Perfect!', 'Nailed it!', 'Excellent answer!', 'Outstanding!']
+          : ['Nice work!', 'Great answer!', 'Well reasoned!', 'Good thinking!'];
+        setToast({ msg: praises[Math.floor(Math.random() * praises.length)], id: Date.now() });
+      }
 
       setAnswers(prev => ({
         ...prev,
@@ -189,8 +209,69 @@ export const ComprehensionSession: React.FC<ComprehensionSessionProps> = ({
     return <div className="flex items-center gap-0.5">{stars}</div>;
   };
 
+  // --- Guided reading intro ---
+  if (!started) {
+    return (
+      <div className="h-full flex flex-col">
+        <div className="flex-none px-4 sm:px-6 lg:px-8 py-3">
+          <button
+            onClick={onExit}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-stone-400 hover:text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-lg transition-colors"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            Exit
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto custom-scrollbar flex items-center justify-center px-4 py-6">
+          <div className="w-full max-w-lg text-center animate-scale-in">
+            <div className="w-16 h-16 bg-teal-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <BookOpen className="w-8 h-8 text-teal-600" />
+            </div>
+            <div className="text-teal-700 text-[10px] font-bold uppercase tracking-[0.2em] mb-2">{passage.type}</div>
+            <h1 className="text-2xl sm:text-3xl font-serif font-bold text-slate-900 leading-tight mb-2">{passage.title}</h1>
+            <p className="text-sm text-stone-500 mb-6">{passage.questions.length} comprehension questions</p>
+
+            <div className="bg-white rounded-2xl border border-stone-200/80 shadow-sm p-5 text-left space-y-3 mb-6">
+              <p className="text-[11px] font-bold text-stone-400 uppercase tracking-wider">How this works</p>
+              {[
+                'Read the passage carefully — it stays on screen while you answer.',
+                'Answer each question in your own words. Aim for a full sentence.',
+                'You get instant feedback and up to 3 tries to reach a strong answer.',
+                'Stuck? Use “Show in Passage” to reveal the evidence after answering.',
+              ].map((tip, i) => (
+                <div key={i} className="flex items-start gap-2.5">
+                  <span className="flex-none w-5 h-5 rounded-full bg-teal-50 text-teal-600 text-[11px] font-bold flex items-center justify-center mt-0.5">
+                    {i + 1}
+                  </span>
+                  <p className="text-sm text-slate-600 leading-relaxed">{tip}</p>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setStarted(true)}
+              className="inline-flex items-center gap-2 px-8 py-3 text-sm font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-xl transition-all shadow-sm hover:shadow-md"
+            >
+              Start reading <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full flex flex-col">
+      {/* Encouragement toast */}
+      {toast && (
+        <div
+          key={toast.id}
+          className="pointer-events-none fixed top-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1.5 px-4 py-2 rounded-full bg-emerald-600 text-white text-sm font-semibold shadow-lg shadow-emerald-900/20 animate-bounce-in"
+        >
+          <Sparkles className="w-4 h-4" /> {toast.msg}
+        </div>
+      )}
+
       {/* Progress bar with exit button */}
       <div className="flex-none px-4 sm:px-6 lg:px-8 py-3 border-b border-stone-200/60 bg-white/60 backdrop-blur-sm">
         <div className="flex items-center justify-between gap-4">
@@ -209,6 +290,13 @@ export const ComprehensionSession: React.FC<ComprehensionSessionProps> = ({
             </div>
           </div>
           <div className="flex items-center gap-3">
+            {doneCount > 0 && (
+              <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-xs font-bold text-amber-700">
+                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                {earnedStars}
+                <span className="font-medium text-amber-500/70">/ {maxStars}</span>
+              </span>
+            )}
             <div className="flex items-center gap-2">
               <div className="w-32 h-2 bg-stone-100 rounded-full overflow-hidden">
                 <div

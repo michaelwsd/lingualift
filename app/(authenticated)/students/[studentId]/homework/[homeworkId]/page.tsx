@@ -18,7 +18,12 @@ import {
   Lightbulb,
   Star,
   XCircle,
+  Swords,
+  Play,
+  CalendarClock,
 } from 'lucide-react';
+import { WordArena } from '@/components/arena/WordArena';
+import { dueInfo, DUE_TONE_CLASSES } from '@/lib/dueDate';
 
 export default function HomeworkQuestionsPage() {
   const params = useParams();
@@ -29,6 +34,7 @@ export default function HomeworkQuestionsPage() {
   const [assignment, setAssignment] = useState<HomeworkAssignment | null>(null);
   const [progress, setProgress] = useState<HomeworkProgress | null>(null);
   const [loading, setLoading] = useState(true);
+  const [arenaOpen, setArenaOpen] = useState(false);
 
   useEffect(() => {
     fetchHomework(homeworkId)
@@ -133,7 +139,46 @@ export default function HomeworkQuestionsPage() {
               {isComprehension ? 'Reading Comprehension' : 'Vocabulary'}
             </span>
           </p>
+          {(() => {
+            const di = dueInfo(assignment.due_date, assignment.status === 'completed');
+            if (!di) return null;
+            return (
+              <span className={`inline-flex items-center gap-1.5 mt-3 px-2.5 py-1 rounded-full text-xs font-semibold border ${DUE_TONE_CLASSES[di.tone]}`}>
+                <CalendarClock className="w-3.5 h-3.5" />
+                {di.label}
+              </span>
+            );
+          })()}
         </div>
+
+        {/* Start Exercise — live in-class vocabulary mastery challenge */}
+        {!isComprehension && assignment.collected_words.length > 0 && (
+          <div className="mb-8 animate-fade-in">
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1e1b4b] to-indigo-800 p-5 sm:p-6 shadow-lg shadow-indigo-900/20">
+              <div className="pointer-events-none absolute -right-6 -top-6 opacity-10">
+                <Swords className="w-32 h-32 text-white" />
+              </div>
+              <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-serif font-bold text-white flex items-center gap-2">
+                    <Swords className="w-5 h-5" /> Word Arena
+                  </h3>
+                  <p className="text-sm text-indigo-200/80 mt-1 max-w-md">
+                    Test {assignment.student_name?.split(' ')[0] || 'the student'} live in class. A gamified gauntlet that checks
+                    they can <span className="text-white font-medium">understand, pronounce, spell</span> and
+                    <span className="text-white font-medium"> use</span> every word.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setArenaOpen(true)}
+                  className="flex-none flex items-center justify-center gap-2 px-6 py-3 text-sm font-bold text-[#1e1b4b] bg-white hover:bg-indigo-50 rounded-xl transition-all shadow-sm hover:shadow-md"
+                >
+                  <Play className="w-4 h-4 fill-[#1e1b4b]" /> Start Exercise
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Comprehension Questions (for comprehension homework) */}
         {isComprehension && assignment.passage.questions?.length > 0 && (
@@ -407,6 +452,14 @@ export default function HomeworkQuestionsPage() {
           </>
         )}
       </div>
+
+      {arenaOpen && (
+        <WordArena
+          studentName={assignment.student_name || 'Student'}
+          words={assignment.collected_words}
+          onExit={() => setArenaOpen(false)}
+        />
+      )}
     </div>
   );
 }

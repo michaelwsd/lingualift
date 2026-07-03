@@ -3,7 +3,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { fetchHomeworkByStudent, fetchStudents, fetchPassagesByStudent, deleteHomework, deletePassage, HomeworkListItem, StudentItem, PassageListItem } from '@/services/api';
-import { ArrowLeft, Clock, BookOpen, ChevronRight, Loader2, GraduationCap, Trash2, Eye, PlayCircle, CheckCircle2, Circle, FileText, Brain } from 'lucide-react';
+import { ArrowLeft, Clock, BookOpen, ChevronRight, Loader2, GraduationCap, Trash2, Eye, PlayCircle, CheckCircle2, Circle, FileText, Brain, CalendarClock, CalendarRange } from 'lucide-react';
+import { dueInfo, DUE_TONE_CLASSES } from '@/lib/dueDate';
+import { PracticePlanModal } from '@/components/homework/PracticePlanModal';
 
 const progressConfig = {
   not_started: {
@@ -62,6 +64,11 @@ export default function StudentHomeworkListPage() {
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; type: 'homework' | 'passage' } | null>(null);
+  const [showPlanModal, setShowPlanModal] = useState(false);
+
+  const reloadHomework = useCallback(() => {
+    fetchHomeworkByStudent(studentId).then(setAssignments).catch(() => {});
+  }, [studentId]);
 
   useEffect(() => {
     Promise.all([
@@ -92,7 +99,8 @@ export default function StudentHomeworkListPage() {
     }
 
     for (const hw of assignments) {
-      const key = hw.passageId || hw.id;
+      // All days of one practice plan group under a single card.
+      const key = hw.plan ? `plan:${hw.plan.planId}` : (hw.passageId || hw.id);
       const existing = map.get(key);
       if (existing) {
         existing.homework.push(hw);
@@ -100,8 +108,8 @@ export default function StudentHomeworkListPage() {
       } else {
         map.set(key, {
           passageId: key,
-          title: hw.passageTitle,
-          type: hw.passageType,
+          title: hw.plan ? 'Practice Plan' : hw.passageTitle,
+          type: hw.plan ? `${hw.plan.totalDays}-day plan · ${hw.wordCount} words/day` : hw.passageType,
           date: hw.assignedAt,
           sentPassageId: null,
           firstHomeworkId: hw.id,
@@ -109,6 +117,14 @@ export default function StudentHomeworkListPage() {
           homework: [hw],
         });
       }
+    }
+
+    // Order homework within each group — plan days by day number, else by time.
+    for (const g of map.values()) {
+      g.homework.sort((a, b) => {
+        if (a.plan && b.plan) return a.plan.day - b.plan.day;
+        return new Date(a.assignedAt).getTime() - new Date(b.assignedAt).getTime();
+      });
     }
 
     return Array.from(map.values()).sort(
@@ -175,14 +191,25 @@ export default function StudentHomeworkListPage() {
             <ArrowLeft className="w-4 h-4" />
             All Students
           </button>
-          <h1 className="text-2xl font-serif font-bold text-slate-900 mb-1">
-            {student?.name || 'Student'}
-          </h1>
-          <p className="text-sm text-stone-500">
-            {totalItems === 0
-              ? 'No homework assigned to this student yet.'
-              : `${totalItems} passage${totalItems !== 1 ? 's' : ''}`}
-          </p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-serif font-bold text-slate-900 mb-1">
+                {student?.name || 'Student'}
+              </h1>
+              <p className="text-sm text-stone-500">
+                {totalItems === 0
+                  ? 'No homework assigned to this student yet.'
+                  : `${totalItems} passage${totalItems !== 1 ? 's' : ''}`}
+              </p>
+            </div>
+            <button
+              onClick={() => setShowPlanModal(true)}
+              className="flex-none flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-[#1e1b4b] hover:bg-indigo-800 rounded-xl transition-all shadow-sm hover:shadow-md"
+            >
+              <CalendarRange className="w-4 h-4" />
+              <span className="hidden sm:inline">Practice Plan</span>
+            </button>
+          </div>
         </div>
 
         {totalItems === 0 ? (
@@ -309,7 +336,11 @@ export default function StudentHomeworkListPage() {
                                   <div className="min-w-0">
                                     <div className="flex items-center gap-2">
                                       <span className="text-sm font-semibold text-slate-800">
-                                        {hw.homeworkType === 'comprehension' ? 'Reading Comprehension' : 'Vocabulary Homework'}
+                                        {hw.homeworkType === 'comprehension'
+                                          ? 'Reading Comprehension'
+                                          : hw.plan
+                                          ? `Day ${hw.plan.day}`
+                                          : 'Vocabulary Homework'}
                                       </span>
                                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${progress.bg} ${progress.text} ${progress.border}`}>
                                         <ProgressIcon className={`w-2.5 h-2.5 ${progress.iconColor}`} />
@@ -335,6 +366,16 @@ export default function StudentHomeworkListPage() {
                                           {hw.wordCount} words
                                         </span>
                                       )}
+                                      {(() => {
+                                        const di = dueInfo(hw.dueDate, pStatus === 'completed');
+                                        if (!di) return null;
+                                        return (
+                                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold border ${DUE_TONE_CLASSES[di.tone]}`}>
+                                            <CalendarClock className="w-2.5 h-2.5" />
+                                            {di.label}
+                                          </span>
+                                        );
+                                      })()}
                                     </div>
                                   </div>
                                 </div>
@@ -362,6 +403,15 @@ export default function StudentHomeworkListPage() {
           </div>
         )}
       </div>
+
+      {showPlanModal && (
+        <PracticePlanModal
+          studentId={studentId}
+          studentName={student?.name || 'Student'}
+          onClose={() => setShowPlanModal(false)}
+          onCreated={reloadHomework}
+        />
+      )}
     </div>
   );
 }
