@@ -51,7 +51,7 @@ export const DefineIt: React.FC<StationProps> = ({ word, onComplete }) => {
           {word.phonetic && <span className="text-sm text-stone-400">{word.phonetic}</span>}
           <SpeakerButton text={word.word} />
         </div>
-        <p className="text-xs text-stone-400 mt-2">Write a complete definition in your own words — with correct spelling and grammar.</p>
+        <p className="text-xs text-stone-400 mt-2">Write the meaning in your own words as a full sentence — with correct spelling and grammar.</p>
       </div>
 
       <textarea

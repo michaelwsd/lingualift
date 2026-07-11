@@ -14,7 +14,13 @@ export const VocabReview: React.FC<VocabReviewProps> = ({ words, onComplete }) =
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex-1 overflow-y-auto custom-scrollbar px-3 sm:px-5 lg:px-8 py-6">
+      <div
+        className="flex-1 overflow-y-auto custom-scrollbar px-3 sm:px-5 lg:px-8 py-6 select-none"
+        onCopy={e => e.preventDefault()}
+        onCut={e => e.preventDefault()}
+        onContextMenu={e => e.preventDefault()}
+        onDragStart={e => e.preventDefault()}
+      >
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-8 animate-fade-in">
             <div className="w-14 h-14 bg-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-3">

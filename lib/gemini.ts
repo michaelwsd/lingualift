@@ -598,11 +598,11 @@ const MEANING_EVALUATION_SCHEMA: Schema = {
   properties: {
     correct: {
       type: Type.BOOLEAN,
-      description: "True ONLY if the definition is COMPLETE (captures the full essential meaning, not just part of it) AND is written in correct spelling AND correct grammar. False if any of these fail: the meaning is wrong, partial/incomplete, or the writing has spelling or grammar mistakes.",
+      description: "True if the definition is LARGELY correct (captures the main meaning, need not be perfectly complete) AND has correct spelling AND correct grammar AND is written as a full sentence. False only if the meaning is wrong/off-topic, there are spelling or grammar mistakes, or it is not a full sentence.",
     },
     feedback: {
       type: Type.STRING,
-      description: "One short sentence. If correct, affirm briefly. If incorrect, name what to fix — an incomplete meaning, a spelling mistake, or a grammar mistake — without simply giving the full definition.",
+      description: "One short sentence. If correct, affirm briefly. If incorrect, name what to fix — the meaning, a spelling mistake, a grammar mistake, or writing it as a full sentence — without simply giving the full definition.",
     },
   },
   required: ["correct", "feedback"],
@@ -621,19 +621,20 @@ The correct meaning is: "${meaning}"
 
 The student wrote: "${studentDescription}"
 
-Decide whether the student's definition is acceptable. It is CORRECT only if ALL THREE hold:
-1. COMPLETE — it captures the full essential meaning of the word, not just a part of it. Their own words, synonyms, or examples are fine as long as the whole idea is there.
+Decide whether the student's definition is acceptable. Be lenient about the meaning. It is CORRECT if ALL of these hold:
+1. LARGELY CORRECT MEANING — it captures the main idea of the word. It does NOT need to be perfectly complete or match the dictionary wording; their own words, synonyms, or examples are fine as long as the core meaning is right.
 2. CORRECT SPELLING — no misspelled words.
-3. CORRECT GRAMMAR — a grammatically well-formed sentence or phrase (agreement, articles, verb forms, etc.).
+3. CORRECT GRAMMAR — grammatically well-formed (agreement, articles, verb forms, etc.).
+4. FULL SENTENCE — written as a complete sentence, not just a word or fragment.
 
 Guidelines:
-- Mark INCORRECT if the meaning is wrong, describes a different concept, is empty/off-topic, is only partially correct or too vague to be complete, OR if it contains any spelling or grammar mistakes.
-- Do NOT require the exact dictionary wording — but the meaning must be complete and the writing must be correct.
-- Keep feedback to ONE short sentence in simple language, pointing to the single most important thing to fix (completeness, spelling, or grammar).`,
+- Mark INCORRECT only if the meaning is plain wrong or off-topic, there are spelling or grammar mistakes, or it is not a full sentence.
+- If the meaning is basically right, lean towards CORRECT — do not penalise for being brief or missing minor nuance.
+- Keep feedback to ONE short sentence in simple language, pointing to the single most important thing to fix (meaning, spelling, grammar, or writing a full sentence).`,
     config: {
       responseMimeType: "application/json",
       responseSchema: MEANING_EVALUATION_SCHEMA,
-      systemInstruction: "You are a careful VCE EAL teacher checking a student's written definition of a vocabulary word. Accept their own wording, but require the definition to be complete and written in correct spelling and grammar.",
+      systemInstruction: "You are an encouraging VCE EAL teacher checking a student's written definition of a vocabulary word. Accept their own wording and a largely-correct meaning; only require correct spelling, correct grammar, and that it is written as a full sentence.",
     },
   });
 
