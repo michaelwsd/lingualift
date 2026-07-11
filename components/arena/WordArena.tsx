@@ -8,6 +8,7 @@ import {
   pickWords,
   stationPoints,
   streakMultiplier,
+  isSpellingStation,
 } from '@/lib/arena';
 import { X, Flame, SkipForward } from 'lucide-react';
 import { ArenaLobby } from './ArenaLobby';
@@ -210,7 +211,14 @@ export const WordArena: React.FC<WordArenaProps> = ({ studentName, words, onExit
                 <p className="text-[11px] font-semibold text-indigo-200/70 uppercase tracking-wider">
                   Word {wordIndex + 1} / {sessionWords.length}
                 </p>
-                <p className="text-sm font-serif font-bold text-white capitalize mt-0.5">{sessionWords[wordIndex].word}</p>
+                {/* Hide the word during spelling stations so it isn't given away. */}
+                {isSpellingStation(config.stations[stationIndex]) ? (
+                  <p className="text-sm font-serif font-bold text-white/40 mt-0.5 tracking-[0.3em]">
+                    {'•'.repeat(sessionWords[wordIndex].word.replace(/\s/g, '').length)}
+                  </p>
+                ) : (
+                  <p className="text-sm font-serif font-bold text-white capitalize mt-0.5">{sessionWords[wordIndex].word}</p>
+                )}
               </div>
 
               <div className="flex-none flex items-center gap-3">

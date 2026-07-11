@@ -49,6 +49,16 @@ export const STATION_META: Record<StationType, StationMeta> = {
 /** Default order a word is taken through — the mastery gauntlet. */
 export const DEFAULT_STATIONS: StationType[] = ['meaning', 'define', 'spell', 'unscramble', 'use_it'];
 
+/**
+ * Stations where the student must produce the spelling themselves. The word
+ * must be hidden in surrounding UI (e.g. the arena HUD) so it isn't given away.
+ */
+export const SPELLING_STATIONS: ReadonlySet<StationType> = new Set(['spell', 'unscramble']);
+
+export function isSpellingStation(type: StationType): boolean {
+  return SPELLING_STATIONS.has(type);
+}
+
 export interface ArenaConfig {
   /** Stations each word is taken through, in order. */
   stations: StationType[];

@@ -598,11 +598,11 @@ const MEANING_EVALUATION_SCHEMA: Schema = {
   properties: {
     correct: {
       type: Type.BOOLEAN,
-      description: "True if the student's explanation captures the ESSENTIAL meaning of the word, even if worded differently or partially. False only if it is wrong, missing the core idea, or too vague to show understanding.",
+      description: "True ONLY if the definition is COMPLETE (captures the full essential meaning, not just part of it) AND is written in correct spelling AND correct grammar. False if any of these fail: the meaning is wrong, partial/incomplete, or the writing has spelling or grammar mistakes.",
     },
     feedback: {
       type: Type.STRING,
-      description: "One short, encouraging sentence. If correct, affirm briefly. If incorrect, gently point them toward what the word actually means without simply giving the full definition.",
+      description: "One short sentence. If correct, affirm briefly. If incorrect, name what to fix — an incomplete meaning, a spelling mistake, or a grammar mistake — without simply giving the full definition.",
     },
   },
   required: ["correct", "feedback"],
@@ -615,23 +615,25 @@ export const evaluateWordMeaning = async (
 ): Promise<{ correct: boolean; feedback: string }> => {
   const response = await ai.models.generateContent({
     model: 'gemini-2.5-flash',
-    contents: `A VCE EAL (English as Additional Language) student was asked to explain, in their OWN words, what the word "${word}" means.
+    contents: `A VCE EAL (English as Additional Language) student was asked to write a definition, in their OWN words, of what the word "${word}" means.
 
 The correct meaning is: "${meaning}"
 
 The student wrote: "${studentDescription}"
 
-Decide whether the student's explanation shows they understand the word.
+Decide whether the student's definition is acceptable. It is CORRECT only if ALL THREE hold:
+1. COMPLETE — it captures the full essential meaning of the word, not just a part of it. Their own words, synonyms, or examples are fine as long as the whole idea is there.
+2. CORRECT SPELLING — no misspelled words.
+3. CORRECT GRAMMAR — a grammatically well-formed sentence or phrase (agreement, articles, verb forms, etc.).
 
 Guidelines:
-- Be lenient and encouraging. Their own words, synonyms, examples, or a partial-but-essentially-correct description should count as CORRECT.
-- Mark INCORRECT only if the explanation is wrong, describes a different concept, is empty/off-topic, or is so vague it shows no real understanding.
-- Do NOT require dictionary wording or the exact definition.
-- Keep feedback to ONE short sentence in simple language.`,
+- Mark INCORRECT if the meaning is wrong, describes a different concept, is empty/off-topic, is only partially correct or too vague to be complete, OR if it contains any spelling or grammar mistakes.
+- Do NOT require the exact dictionary wording — but the meaning must be complete and the writing must be correct.
+- Keep feedback to ONE short sentence in simple language, pointing to the single most important thing to fix (completeness, spelling, or grammar).`,
     config: {
       responseMimeType: "application/json",
       responseSchema: MEANING_EVALUATION_SCHEMA,
-      systemInstruction: "You are a warm, encouraging VCE EAL teacher checking whether a student can explain a vocabulary word's meaning in their own words. Reward genuine understanding, not exact wording.",
+      systemInstruction: "You are a careful VCE EAL teacher checking a student's written definition of a vocabulary word. Accept their own wording, but require the definition to be complete and written in correct spelling and grammar.",
     },
   });
 
