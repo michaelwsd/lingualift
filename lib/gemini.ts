@@ -1,5 +1,6 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { GenerationConfig, Passage, SynonymGroup, CollectedWord, MCDefinitionQuestion, MCSynonymQuestion } from "@/types";
+import { describeBlankMismatch, repairBlankMarkers } from "@/lib/blanks";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
@@ -89,6 +90,46 @@ const FILL_IN_BLANK_SCHEMA: Schema = {
     }
   },
   required: ["passage", "answers"]
+};
+
+interface FillInBlankResult {
+  passage: string;
+  answers: string[];
+}
+
+/**
+ * Gemini occasionally mistypes a blank marker (`__BLAK_4__`) or omits one altogether.
+ * The result is an exercise the student cannot finish, and homework is generated once and
+ * stored, so a bad passage stays broken forever. Repair what is recoverable and reject the
+ * rest, so `generateValidFillInBlank` retries instead of persisting an unsolvable exercise.
+ */
+const validateFillInBlank = (data: FillInBlankResult): FillInBlankResult => {
+  const answers = data?.answers ?? [];
+  const original = data?.passage ?? '';
+  if (answers.length === 0) throw new Error('Fill-in-blank exercise has no answers');
+
+  const passage = describeBlankMismatch(original, answers) ? repairBlankMarkers(original) : original;
+  const mismatch = describeBlankMismatch(passage, answers);
+  if (mismatch) throw new Error(`Malformed fill-in-blank passage (${mismatch})`);
+
+  return { passage, answers };
+};
+
+/** Generates a fill-in-blank exercise, retrying until the passage is actually solvable. */
+const generateValidFillInBlank = async (
+  generate: () => Promise<FillInBlankResult>,
+  attempts = 3
+): Promise<FillInBlankResult> => {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      return validateFillInBlank(await generate());
+    } catch (error) {
+      lastError = error;
+      console.warn(`Fill-in-blank generation attempt ${attempt}/${attempts} failed:`, error);
+    }
+  }
+  throw lastError;
 };
 
 export const suggestTopics = async (userInput?: string, format?: string): Promise<string[]> => {
@@ -253,9 +294,10 @@ export const generateFillInBlank = async (words: string[]): Promise<{ passage: s
 
   const wordList = words.map((w, i) => `${i}. "${w}"`).join('\n');
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: `Create a fill-in-the-blank exercise using ALL of the following vocabulary words:
+  return generateValidFillInBlank(async () => {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: `Create a fill-in-the-blank exercise using ALL of the following vocabulary words:
 
 ${wordList}
 
@@ -264,25 +306,24 @@ Requirements:
 2. The passage should be suitable for VCE EAL students (intermediate English, ages 16-18).
 3. Use ALL ${words.length} words naturally in the passage.
 4. Replace each word with a marker: __BLANK_0__ for word 0, __BLANK_1__ for word 1, etc.
-5. The words should be spread throughout the passage, NOT clustered together.
-6. The passage should provide enough context clues for students to identify which word goes in each blank.
-7. The 'answers' array must contain the words in order: answers[0] = word for __BLANK_0__, answers[1] = word for __BLANK_1__, etc.
-8. Make the passage interesting and relatable for young people.`,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: FILL_IN_BLANK_SCHEMA,
-      systemInstruction: "You are a VCE EAL teacher creating vocabulary exercises. Write clear, engaging passages that help students practice using new words in context.",
-    },
+5. Copy each marker EXACTLY as written above - two underscores, the word BLANK, an underscore, the number, two underscores. A mistyped marker makes the exercise impossible to complete.
+6. The passage must contain exactly ${words.length} markers, __BLANK_0__ through __BLANK_${words.length - 1}__, each appearing exactly once.
+7. The words should be spread throughout the passage, NOT clustered together.
+8. The passage should provide enough context clues for students to identify which word goes in each blank.
+9. The 'answers' array must contain the words in order: answers[0] = word for __BLANK_0__, answers[1] = word for __BLANK_1__, etc.
+10. Make the passage interesting and relatable for young people.`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: FILL_IN_BLANK_SCHEMA,
+        systemInstruction: "You are a VCE EAL teacher creating vocabulary exercises. Write clear, engaging passages that help students practice using new words in context.",
+      },
+    });
+
+    const text = response.text;
+    if (!text) throw new Error("No fill-in-blank exercise generated");
+
+    return JSON.parse(text);
   });
-
-  const text = response.text;
-  if (!text) throw new Error("No fill-in-blank exercise generated");
-
-  const data = JSON.parse(text);
-  return {
-    passage: data.passage,
-    answers: data.answers,
-  };
 };
 
 export const generateSynonyms = async (words: string[]): Promise<SynonymGroup[]> => {
@@ -656,35 +697,35 @@ export const generateHomeworkFillInBlank = async (words: string[]): Promise<{ pa
   const blankWords = words.length <= 10 ? words : words.slice(0, 10);
   const wordList = blankWords.map((w, i) => `${i}. "${w}"`).join('\n');
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: `Create a fill-in-the-blank exercise using ALL of the following vocabulary words:
+  return generateValidFillInBlank(async () => {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: `Create a fill-in-the-blank exercise using ALL of the following vocabulary words:
 
 ${wordList}
 
 Requirements:
 1. Write a coherent, engaging passage of approximately 150 words.
-2. The passage MUST be suitable for EAL (English as Additional Language) students — use simple sentence structures and clear context.
-3. Use ALL ${blankWords.length} words naturally in the passage. Each word must appear EXACTLY ONCE — no duplicates.
+2. The passage MUST be suitable for EAL (English as Additional Language) students - use simple sentence structures and clear context.
+3. Use ALL ${blankWords.length} words naturally in the passage. Each word must appear EXACTLY ONCE - no duplicates.
 4. Replace each word with a marker: __BLANK_0__ for word 0, __BLANK_1__ for word 1, etc.
-5. The words should be spread evenly throughout the passage, NOT clustered together.
-6. The passage should provide strong context clues for each blank so students can identify which word fits.
-7. The 'answers' array must contain the words in order: answers[0] = word for __BLANK_0__, etc.
-8. Make the passage interesting and relatable for young people aged 15-18.
-9. Do NOT use any of the vocabulary words elsewhere in the passage (only in their blank positions).`,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: FILL_IN_BLANK_SCHEMA,
-      systemInstruction: "You are a VCE EAL teacher creating vocabulary exercises. Write clear, engaging, EAL-appropriate passages that help students practice using new words in context.",
-    },
+5. Copy each marker EXACTLY as written above - two underscores, the word BLANK, an underscore, the number, two underscores. A mistyped marker makes the exercise impossible to complete.
+6. The passage must contain exactly ${blankWords.length} markers, __BLANK_0__ through __BLANK_${blankWords.length - 1}__, each appearing exactly once.
+7. The words should be spread evenly throughout the passage, NOT clustered together.
+8. The passage should provide strong context clues for each blank so students can identify which word fits.
+9. The 'answers' array must contain the words in order: answers[0] = word for __BLANK_0__, etc.
+10. Make the passage interesting and relatable for young people aged 15-18.
+11. Do NOT use any of the vocabulary words elsewhere in the passage (only in their blank positions).`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: FILL_IN_BLANK_SCHEMA,
+        systemInstruction: "You are a VCE EAL teacher creating vocabulary exercises. Write clear, engaging, EAL-appropriate passages that help students practice using new words in context.",
+      },
+    });
+
+    const text = response.text;
+    if (!text) throw new Error("No homework fill-in-blank generated");
+
+    return JSON.parse(text);
   });
-
-  const text = response.text;
-  if (!text) throw new Error("No homework fill-in-blank generated");
-
-  const data = JSON.parse(text);
-  return {
-    passage: data.passage,
-    answers: data.answers,
-  };
 };

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { CollectedWord } from '@/types';
 import { generateHomeworkFillInBlank } from '@/services/api';
+import { blankIndexOf, prepareBlankPassage, splitPassage } from '@/lib/blanks';
 import { Loader2, Check, X } from 'lucide-react';
 
 interface HomeworkFillInBlanksProps {
@@ -42,7 +43,14 @@ export const HomeworkFillInBlanks: React.FC<HomeworkFillInBlanksProps> = ({
     load();
   }, [words]);
 
-  const blankCount = correctAnswers.length;
+  // Blanks come from the passage, not from `correctAnswers`: a passage generated with a
+  // mistyped marker has fewer blanks than answers, and counting the missing one would
+  // leave Check Answers disabled no matter what the student does.
+  const { passage: preparedPassage, indices: blankIndices } = useMemo(
+    () => prepareBlankPassage(passage ?? undefined, correctAnswers),
+    [passage, correctAnswers]
+  );
+  const blankCount = blankIndices.length;
 
   // Available words (not yet placed)
   const availableWords = useMemo(() => {
@@ -117,7 +125,7 @@ export const HomeworkFillInBlanks: React.FC<HomeworkFillInBlanksProps> = ({
     let correctCount = 0;
     let incorrectCount = 0;
 
-    for (let i = 0; i < blankCount; i++) {
+    for (const i of blankIndices) {
       const isCorrect = placements[i]?.toLowerCase() === correctAnswers[i]?.toLowerCase();
       newResults[i] = isCorrect;
       if (isCorrect) correctCount++;
@@ -156,16 +164,14 @@ export const HomeworkFillInBlanks: React.FC<HomeworkFillInBlanksProps> = ({
     );
   }
 
-  const allPlaced = Object.keys(placements).length === blankCount;
+  const allPlaced = blankIndices.every(i => placements[i] !== undefined);
 
   // Render passage with blanks
   const renderPassage = () => {
-    const parts = passage.split(/(__BLANK_\d+__)/);
-    return parts.map((part, i) => {
-      const blankMatch = part.match(/__BLANK_(\d+)__/);
-      if (!blankMatch) return <span key={i}>{part}</span>;
+    return splitPassage(preparedPassage).map((part, i) => {
+      const blankIndex = blankIndexOf(part);
+      if (blankIndex === null) return <span key={i}>{part}</span>;
 
-      const blankIndex = parseInt(blankMatch[1]);
       const placedWord = placements[blankIndex];
       const isCorrect = checked && results[blankIndex] === true;
       const isIncorrect = checked && results[blankIndex] === false;

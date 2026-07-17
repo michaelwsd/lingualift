@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { CollectedWord, FillInBlankExercise } from '@/types';
 import { generateFillInBlank } from '@/services/api';
+import { blankIndexOf, prepareBlankPassage, splitPassage } from '@/lib/blanks';
 import { Loader2, Check, X, RotateCcw, RefreshCw, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface FillInBlanksProps {
@@ -88,11 +89,15 @@ export const FillInBlanks: React.FC<FillInBlanksProps> = ({ wordGroups, cachedEx
 
   if (!exercise) return null;
 
-  const segments = exercise.passage.split(/(__BLANK_\d+__)/g);
-  const blankCount = exercise.answers.length;
+  // Blanks come from the passage, not from `answers`: an exercise generated with a mistyped
+  // marker has fewer blanks than answers, and counting the missing one would leave Check
+  // Answers disabled no matter what the student does.
+  const { passage, indices: blankIndices } = prepareBlankPassage(exercise.passage, exercise.answers);
+  const segments = splitPassage(passage);
+  const blankCount = blankIndices.length;
   const placedWordValues = Object.values(state.placedWords);
   const availableWords = words.filter(w => !placedWordValues.includes(w.word));
-  const allFilled = Object.keys(state.placedWords).length === blankCount;
+  const allFilled = blankIndices.every(i => state.placedWords[i] !== undefined);
   const allCorrect = state.checked && Object.values(state.results).every(v => v);
   const totalGroups = wordGroups.length;
 
@@ -142,7 +147,7 @@ export const FillInBlanks: React.FC<FillInBlanksProps> = ({ wordGroups, cachedEx
 
   const handleCheck = () => {
     const newResults: Record<number, boolean> = {};
-    for (let i = 0; i < blankCount; i++) {
+    for (const i of blankIndices) {
       const placed = state.placedWords[i];
       const correct = exercise.answers[i];
       newResults[i] = placed?.toLowerCase() === correct?.toLowerCase();
@@ -152,7 +157,7 @@ export const FillInBlanks: React.FC<FillInBlanksProps> = ({ wordGroups, cachedEx
 
   const handleReveal = () => {
     const correct: Record<number, string> = {};
-    exercise.answers.forEach((a, i) => { correct[i] = a; });
+    for (const i of blankIndices) correct[i] = exercise.answers[i];
     updateState({ placedWords: correct, revealed: true, checked: false, results: {}, selectedWord: null });
   };
 
@@ -226,10 +231,9 @@ export const FillInBlanks: React.FC<FillInBlanksProps> = ({ wordGroups, cachedEx
       {/* Passage with Blanks */}
       <div className="bg-white rounded-xl border border-stone-200 p-6 font-serif text-slate-700 text-base leading-loose" key={`passage-${currentGroup}`}>
         {segments.map((seg, i) => {
-          const blankMatch = seg.match(/__BLANK_(\d+)__/);
-          if (!blankMatch) return <span key={i}>{seg}</span>;
+          const blankIndex = blankIndexOf(seg);
+          if (blankIndex === null) return <span key={i}>{seg}</span>;
 
-          const blankIndex = parseInt(blankMatch[1]);
           const placed = state.placedWords[blankIndex];
           const isCorrect = state.checked && state.results[blankIndex] === true;
           const isIncorrect = state.checked && state.results[blankIndex] === false;

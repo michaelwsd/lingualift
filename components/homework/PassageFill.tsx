@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { PassageFillExercise } from '@/types';
+import { blankIndexOf, prepareBlankPassage, splitPassage } from '@/lib/blanks';
 import { Check, X } from 'lucide-react';
 
 interface PassageFillProps {
@@ -15,7 +16,14 @@ export const PassageFill: React.FC<PassageFillProps> = ({ exercise, onComplete }
   const [checked, setChecked] = useState(false);
   const [results, setResults] = useState<Record<number, boolean>>({});
 
-  const blankCount = exercise.answers.length;
+  // Blanks come from the passage, not from `answers`: an exercise stored with a mistyped
+  // marker has fewer blanks than answers, and counting the missing one would leave Check
+  // Answers disabled no matter what the student does.
+  const { passage, indices: blankIndices } = useMemo(
+    () => prepareBlankPassage(exercise.passage, exercise.answers),
+    [exercise.passage, exercise.answers]
+  );
+  const blankCount = blankIndices.length;
 
   const availableWords = useMemo(() => {
     const placed = new Set(Object.values(placements));
@@ -76,7 +84,7 @@ export const PassageFill: React.FC<PassageFillProps> = ({ exercise, onComplete }
   const handleCheck = () => {
     const newResults: Record<number, boolean> = {};
     let allCorrect = true;
-    for (let i = 0; i < blankCount; i++) {
+    for (const i of blankIndices) {
       const isCorrect = placements[i]?.toLowerCase() === exercise.answers[i]?.toLowerCase();
       newResults[i] = isCorrect;
       if (!isCorrect) allCorrect = false;
@@ -86,15 +94,13 @@ export const PassageFill: React.FC<PassageFillProps> = ({ exercise, onComplete }
     onComplete(allCorrect);
   };
 
-  const allPlaced = Object.keys(placements).length === blankCount;
+  const allPlaced = blankIndices.every(i => placements[i] !== undefined);
 
   const renderPassage = () => {
-    const parts = exercise.passage.split(/(__BLANK_\d+__)/);
-    return parts.map((part, i) => {
-      const blankMatch = part.match(/__BLANK_(\d+)__/);
-      if (!blankMatch) return <span key={i}>{part}</span>;
+    return splitPassage(passage).map((part, i) => {
+      const blankIndex = blankIndexOf(part);
+      if (blankIndex === null) return <span key={i}>{part}</span>;
 
-      const blankIndex = parseInt(blankMatch[1]);
       const placedWord = placements[blankIndex];
       const isCorrect = checked && results[blankIndex] === true;
       const isIncorrect = checked && results[blankIndex] === false;
